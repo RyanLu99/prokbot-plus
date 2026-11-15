@@ -29,6 +29,7 @@ export class Auth {
     this.dataDir = dataDir;
     this.sessionMs = sessionMs;
     this.pairingMs = pairingMs;
+    this.touchWrites = new Map();
     this.store = new JsonStore(join(dataDir, "auth.json"), {
       version: 1,
       admin: null,
@@ -93,12 +94,9 @@ export class Auth {
     return token;
   }
   adminSession(token) {
-    return (
-      typeof token === "string" &&
-      this.store.value.sessions.some(
-        (item) => item.hash === hash(token) && item.expiresAt > Date.now(),
-      )
-    );
+    if (typeof token !== "string") return false;
+    const fingerprint = hash(token), now = Date.now();
+    return this.store.value.sessions.some(item => item.hash === fingerprint && item.expiresAt > now);
   }
   async logout(token) {
     await this.store.mutate((state) => {
@@ -173,8 +171,9 @@ export class Auth {
   }
   authenticate(token) {
     if (typeof token !== "string") return null;
+    const fingerprint = hash(token);
     const device = this.store.value.devices.find(
-      (item) => !item.revokedAt && item.hash === hash(token),
+      (item) => !item.revokedAt && item.hash === fingerprint,
     );
     return device ? publicDevice(device) : null;
   }
@@ -190,12 +189,17 @@ export class Auth {
     const device = this.device(id);
     if (!device || Date.now() - Date.parse(device.lastSeenAt ?? 0) < 60_000)
       return;
-    await this.store.mutate((state) => {
+    // One page load can request many resources before the first fsync has finished.
+    const inflight = this.touchWrites.get(id);
+    if (inflight) return inflight;
+    const pending = this.store.mutate((state) => {
       const current = state.devices.find(
         (item) => item.id === id && !item.revokedAt,
       );
       if (current) current.lastSeenAt = new Date().toISOString();
     });
+    this.touchWrites.set(id, pending);
+    try { await pending; } finally { this.touchWrites.delete(id); }
   }
   async revoke(id) {
     await this.store.mutate((state) => {

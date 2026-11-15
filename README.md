@@ -8,8 +8,8 @@ Windows · macOS · iOS 客户端补丁 ｜ [自开发 Android App（非官方�
 
 <p>
 <!-- client-badges:start -->
-  <a href="#client-versions"><img alt="Windows 官方 1.1.0 x64 (与此补丁不兼容)" src="https://img.shields.io/badge/Windows%20%E5%AE%98%E6%96%B9-1.1.0%20x64%20(%E4%B8%8E%E6%AD%A4%E8%A1%A5%E4%B8%81%E4%B8%8D%E5%85%BC%E5%AE%B9)-0078D4?logo=windows&logoColor=white"></a>
-  <a href="#client-versions"><img alt="Windows 补丁仅接受 0.71.2 x64" src="https://img.shields.io/badge/Windows%20%E8%A1%A5%E4%B8%81%E4%BB%85%E6%8E%A5%E5%8F%97-0.71.2%20x64-237E55?logo=windows&logoColor=white"></a>
+  <a href="#client-versions"><img alt="Windows 官方 1.1.0 x64" src="https://img.shields.io/badge/Windows%20%E5%AE%98%E6%96%B9-1.1.0%20x64-0078D4?logo=windows&logoColor=white"></a>
+  <a href="#client-versions"><img alt="Windows 补丁仅接受 1.1.0 x64" src="https://img.shields.io/badge/Windows%20%E8%A1%A5%E4%B8%81%E4%BB%85%E6%8E%A5%E5%8F%97-1.1.0%20x64-237E55?logo=windows&logoColor=white"></a>
   <a href="#client-versions"><img alt="macOS 官方 1.1.0 ARM64" src="https://img.shields.io/badge/macOS%20%E5%AE%98%E6%96%B9-1.1.0%20ARM64-111111?logo=apple&logoColor=white"></a>
   <a href="#client-versions"><img alt="iOS 官方 1.25.0" src="https://img.shields.io/badge/iOS%20%E5%AE%98%E6%96%B9-1.25.0-111111?logo=apple&logoColor=white"></a>
   <a href="#client-versions"><img alt="Android shell 1.1.0" src="https://img.shields.io/badge/%E8%87%AA%E5%BC%80%E5%8F%91%20Android-1.1.0-237E55?logo=android&logoColor=white"></a>
@@ -29,7 +29,7 @@ Windows · macOS · iOS 客户端补丁 ｜ [自开发 Android App（非官方�
 
 | 平台 | 官方最新 | 本项目接受的原包 / 外壳 |
 | --- | --- | --- |
-| Windows x64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand)（补丁在输入校验时拒绝了该安装包；未测试原生客户端聊天） | 0.71.2 |
+| Windows x64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) | 1.1.0 |
 | macOS ARM64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) | 0.71.2；无 Mac 真机测试 |
 | iOS | [1.25.0](https://apps.apple.com/us/app/grok-bot/id6794501026) | 1.16.0 (23152)；无 iPhone / iPad 真机测试 |
 | Android 9+（自开发，非官方） | 不使用官方 Android APK | 外壳 **1.1.0**（构建 10100），界面来自 Windows **0.71.2** |
@@ -64,11 +64,11 @@ Plus 在此基础上补了这些：**Windows 和 Android 客户端**；**Anthrop
 
 | 部分 | 支持 | 说明 |
 | --- | --- | --- |
-| 服务端 | Linux x86_64 或 ARM64 | x86_64 已在 Ubuntu 24.04 + Docker 29 实测。甲骨文 Ampere A1 原生运行 Host、搭配独立 amd64 桌面，已验证两轮聊天和 VNC 操作。只有一台 ARM 机器时，模拟桌面仍属实验模式。[选部署方式](docs/AI-INSTALL.md#先选部署方式) |
-| Windows 客户端 | Windows 10 / 11，x64 | **本版本新增。** 便携版和安装包，不需要管理员权限 |
+| 服务端 | Linux x86_64 或 ARM64 | 以往在 Ubuntu 24.04 + Docker 29 上验证过 x86_64 部署。历史 A1 测试验证的是原生 ARM64 Host 与独立 amd64 桌面的聊天和 VNC，不是本轮 A1 构建、升级或容量验收。ARM 同机模拟仍属实验。[选部署方式](docs/AI-INSTALL.md#先选部署方式) |
+| Windows 客户端 | Windows 10 / 11，x64，Grok Bot 1.1.0 | 便携版和安装包，不需要管理员权限。已在 Windows 上用打好补丁的客户端完成配对、两轮对话、附件、搜索、本机命令和重启验证。 |
 | Mac 客户端 | Apple Silicon，Grok Bot 0.71.2 | 本轮没有 Mac 测试设备。已测试与 Windows 共用的桌面代码，未在 macOS 上验证客户端安装、启动、配对或聊天。 |
 | iOS 客户端 | Grok Bot 1.16.0（23152） | 本轮没有 iPhone 或 iPad 测试设备。已测试补丁工具，未验证真机签名安装、配对或聊天。自行安装仍需自备已解密的 IPA 和签名证书。 |
-| Android 客户端 | Android 9 及以上 | 自开发非官方外壳，从 Windows 固定原包生成 APK。请保留原签名密钥。 |
+| Android 客户端 | Android 9 及以上 | 自开发非官方外壳，从 Windows 0.71.2 固定原包生成 APK。请保留原签名密钥。 |
 | Linux 桌面客户端 | 本项目不提供补丁 | [官方提供 Linux 客户端](https://docs.x.ai/grok-bot/deployment)。它不是服务端使用的 amd64 执行桌面镜像。 |
 
 ## 这个版本新增了什么
@@ -86,14 +86,15 @@ Plus 在此基础上补了这些：**Windows 和 Android 客户端**；**Anthrop
   </tr>
 </table>
 
-上游只有 Mac 和 iOS。Windows 版用官方 0.71.2 Windows 安装包加补丁生成，界面和官方 Windows 版一致：
+上游只有 Mac 和 iOS。Windows 版用官方最新的 1.1.0 Windows 安装包加补丁生成，界面和官方 Windows 版一致：
 
-- 托盘常驻、系统通知、附件、Tailcat；
+- 托盘常驻、系统通知、附件、消息搜索、Tailcat；
 - 本机命令执行（PowerShell，中文输出不会乱码）；
 - 把复杂编程交给本机的 Codex；
+- 语音输入和实时语音通话改由 Host 提供；
 - 生成便携版和安装包两种形式。
 
-补丁由 Mac 版移植而来，每一段都校验过结构。
+补丁的每处修改都以原文件中唯一的位置为锚点，由仓库里的生成工具从官方安装包重新生成并逐字节核对。
 
 ### Android 客户端
 
@@ -102,7 +103,7 @@ Plus 在此基础上补了这些：**Windows 和 Android 客户端**；**Anthrop
 <p align="center">
   <img src="docs/images/android-chat-zh.png" alt="Android 客户端真实聊天：用户问番茄蛋炒饭先炒什么，饭点回复先炒蛋；用户追问米饭结块怎么办，饭点建议用湿手捏散。" width="380">
 </p>
-<p align="center"><sub>固定桌面界面 0.71.2 的历史实拍（Android 15 模拟器）：在 App 里问「先炒什么」，再追问「那米饭结块了怎么办」。两轮回复均由连接到自部署 Host 的模型实际生成。</sub></p>
+<p align="center"><sub>Android 15 模拟器实拍：在 App 里问「先炒什么」，再追问「那米饭结块了怎么办」。两轮回复均由连接到自部署 Host 的模型实际生成。</sub></p>
 
 官方 Android 版带有防篡改保护，不能修改。Plus 换了一种做法：把官方**桌面版**的界面（和 Windows、Mac 客户端同一套，取自你自己下载的官方 Windows 安装包）装进一个本项目编写的 Android 外壳，生成 APK：
 
@@ -112,7 +113,7 @@ Plus 在此基础上补了这些：**Windows 和 Android 客户端**；**Anthrop
 - 后台通知不依赖 Google 推送服务，点通知直接打开对应的 Bot；
 - 设备凭据用 Android Keystore 加密保存，网页里拿不到。
 
-APK 用只属于你的密钥签名。不支持 Tailcat，外网使用请用 VPN、内网穿透或 HTTPS 域名。详见 [Android 客户端](android/README.md)。
+APK 用只属于你的密钥签名。不支持 Tailcat，外网使用请用 VPN、内网穿透或 HTTPS 域名。生成方式和签名密钥备份见[客户端安装说明](docs/AI-INSTALL.md#client-packages)。
 
 ### 三种模型接口
 
@@ -164,12 +165,12 @@ APK 用只属于你的密钥签名。不支持 Tailcat，外网使用请用 VPN�
   - Webhook 触发任务；
   - 自己写应用（插件）；
   - 多台 Host 之间的 Bot 协作；
-  - 受管数据卷的备份和恢复（不含镜像或宿主系统）。
+  - 把项目管理的 Docker 数据卷备份并恢复到新项目；不含镜像、实例 `.env` 或宿主机系统。见[备份与恢复](docs/AI-INSTALL.md#volume-recovery)。
 
 **代价**
 
-- 要有一台 Linux 服务器，自己负责升级和备份。各部署模式的实测限制见下表。
-- 版本是固定的：客户端 0.71.2、iOS 1.16.0、Host `d0a4baa`。官方更新后，要等补丁跟进才能升级，也没有自动更新。
+- 要有 Linux 服务器，并自己负责升级和备份。不同部署方式的资源证据见下表。
+- 版本是固定的：Windows 客户端 1.1.0、Mac 客户端和 Android 界面 0.71.2、iOS 1.16.0、Host `d0a4baa`。官方更新后，要等补丁跟进才能升级，也没有自动更新。
 - 效果取决于你选的模型。官方针对自家模型做过调校，换成别的模型，体验可能有差距。
 - 部分官方功能被关掉或换掉：
   - 关掉的：虚拟卡、外部消息草稿、产品反馈、通行密钥转发；
@@ -182,24 +183,24 @@ APK 用只属于你的密钥签名。不支持 Tailcat，外网使用请用 VPN�
 
 ## 部署需要什么
 
-**已发布包和实测边界（2026-11-14）**
+安装前先看[客户端版本表](#client-versions)。补丁只接受清单固定的原版；[官方更新日志](https://x.ai/changelog/bot)不是自托管兼容性证明。
 
-- Plus 发布包按平台分发工具。`v1.0.0` 没有 Android 包；1.1.0 新增独立 Android 工具 ZIP。首页保留的是该外壳的历史真实聊天截图，不是新版桌面界面的验收证据。
-- 官方下载版本和本项目可接受原包见[客户端版本表](#client-versions)。更新客户端工具不要求升级或重装现有 Host。
-
-| 部署模式 | 最低实测 | 推荐实测 | 磁盘 | 已测负载与限制 |
+| 部署方式 | 最低已测配置 | 推荐已测配置 | 磁盘 | 适用负载与实测限制 |
 | --- | --- | --- | --- | --- |
-| x86_64：Host 和 amd64 桌面同机 | 未定档 | 未定档 | 50 GiB 是早期测试盘，不是最低需求 | 两次 2 核 2 GB 限时聊天未全部按时送达；2 核 4 GB、4 核 8 GB 只有新装功能记录，没有三轮一小时容量数据。 |
-| ARM64 Host + 独立 amd64 桌面 | 两台均未定档 | 两台均未定档 | 两台分别预留镜像、数据与备份，均未定档 | 历史上走通过聊天与桌面控制；不等于当前候选的 ARM64 Docker 构建、升级或双机持续负载。 |
-| ARM64 同机模拟 amd64 桌面 | 未定档 | 未定档 | 未定档 | 实验模式，没有可用于容量评级的整机数据。 |
-| 仅 Host，无执行节点 | 未定档 | 未定档 | 未定档 | 只能核对管理与设置；没有启用的执行节点时，聊天核心不启动，不能算完整聊天部署。 |
+| x86_64：Host＋桌面同机 | 尚未定档 | 尚未定档 | 测试虚拟机 50 GiB；不是最低值 | 旧版基线在 2 vCPU / 2 GiB、无 swap 的机器上完成过两轮对话，也出现过后台模型断连、核心重启。本轮候选的两次 2C2G 限时诊断均未通过；2C4G、4C8G 有独立虚拟机的功能记录，均未定档。 |
+| ARM64 Host＋独立 amd64 桌面 | 两台均未定档 | 两台均未定档 | Host 和桌面分别预留镜像、数据与备份空间 | 历史 A1 测试走通对话与桌面，不是本次两个整机的容量对照。 |
+| ARM64：Host＋模拟 amd64 桌面 | 尚未定档 | 尚未定档 | 需同时容纳两种架构的镜像 | 实验模式；通过 amd64 预检不代表桌面稳定。 |
+| 仅 Host，未配置远端执行节点 | 不适用 | 不是独立聊天部署 | 单列 Host 镜像、数据与备份；amd64 构建仍用桌面作基底 | `--host-only` 是分机模式：配置模型并启用远端执行节点后才启动聊天核心。此前管理页可用、健康检查可通过。 |
 
-外部模型推理不计入以上客体；本机推理要另算资源。旧手册的 8 GB 内存、30 GB 磁盘是规划预留，不是实测最低值。备份覆盖受管数据卷，不包含镜像、实例 `.env` 或宿主系统。没有完成同版本的升级与失败恢复演练时，不承诺旧数据无损。
+**2C2G 限时诊断**（vCPU / GiB）：两次测的都是候选。第一次三次请求中有两次按时交付，第 3 次在 55 秒内未收到匹配回复；没有回执证明它之后送达。同期一次上游模型调用耗时 81.68 秒，这不是 Host 自身耗时。第二次前四次分别在 8.524、10.272、17.608、24.200 秒交付，第 5 次未在截止前交付。两轮都未达到一小时，不能据此定档。
 
+**2C4G 与 4C8G 功能观察**：两档各在独立虚拟机完成设备配对、52 字节附件、两轮真实模型对话及取消。显式重启 Host 后，原配对设备读回相同的 ID、正文、附件 SHA-256 和模型配置。2C4G 新装构建 519.14 秒，首轮 / 续轮回复 100.24 / 2.08 秒；4C8G 新装构建 589.05 秒，回复 106.02 / 2.16 秒。这是各档一次功能观察，不是容量测试、基线与候选的前后对照或推荐配置。
+
+模型推理在另一台机器上，不计入上述虚拟机配置。磁盘另计构建缓存、运行数据和备份。只有在获准的专用非生产虚拟机上，才做[容量验收](docs/ARCHITECTURE.md#capacity-evidence)；禁止使用生产实例、数据卷或凭据做本轮升级演练和压测。
 
 | 必需 | 要求 |
 | --- | --- |
-| 服务器 | 64 位 Linux、Docker Compose v2、Python 3.10+。具体配置见上表；构建缓存和备份另留空间；ARM 单机还需要 QEMU/binfmt |
+| 服务器 | 64 位 Linux、Docker Compose（`up` 支持 `--wait` 和 `--wait-timeout`）、Python 3.10+。ARM 单机模拟桌面另需 QEMU/binfmt。8 GB 内存、30 GB 空闲磁盘是旧手册的预留值，不是实测最低或推荐档。 |
 | 模型接口 | 任意一种：Anthropic Messages、OpenAI Responses、OpenAI Chat Completions。要支持工具调用；想让 Bot 操作电脑，还要支持图片输入 |
 | 生成客户端的电脑 | Windows 客户端在 Windows 10/11 x64 上生成，Mac 客户端在 Apple Silicon Mac 上生成，Android 客户端在 Windows、Mac、Linux 上都能生成，都需要 Node.js 22.12+。iOS 需要砸壳 IPA 和签名证书 |
 
@@ -231,10 +232,11 @@ AI 会先列出你要准备的东西，然后一步步部署服务端、配置�
 
 | 文档 | 内容 |
 | --- | --- |
+| [维护交接](docs/HANDOFF.md) | 已发布版本、修改入口、测试输入、恢复与发布 |
 | [AI 部署手册](docs/AI-INSTALL.md) | 从零部署的完整步骤，每一步都写了「应该看到什么」和「失败了怎么办」 |
 | [技术文档](docs/ARCHITECTURE.md) | 原理、每个功能怎么实现、Plus 改了什么、目录、测试、二次开发入口和已知限制 |
-| [Windows 客户端](windows/README.md) · [Mac 客户端](mac/README.md) · [iOS 客户端](ios/README.md) · [Android 客户端](android/README.md) | 各平台补丁的用法 |
-| [分开部署、备份与应用开发](host/README.md) | 进阶用法 |
+| [客户端安装与平台手册](docs/AI-INSTALL.md#client-packages) | Windows、Mac、iOS、Android 的固定输入和各自发布包内的说明 |
+| [分开部署](docs/AI-INSTALL.md#split-host)、[卷备份与恢复](docs/AI-INSTALL.md#volume-recovery)、[应用开发](docs/ARCHITECTURE.md#app-development) | 进阶用法；各发布包都能打开这些章节 |
 
 ## 友情链接
 
@@ -248,5 +250,5 @@ AI 会先列出你要准备的东西，然后一步步部署服务端、配置�
   - 来源和修改清单见 [NOTICE](NOTICE)。
 - 仓库里没有任何 Grok Bot 官方程序，也不提供成品客户端 APK 或 IPA。`android/dist/` 只包含自开发的空外壳；桌面界面从你自己下载并校验的 Windows 安装包中提取。
 - Grok、Grok Bot 及相关商标归各自权利人所有。本项目与他们没有关联，也没有得到他们的认可。
-- 本项目大部分代码由 AI 辅助编写，按现状提供，不提供任何担保。
+- 本项目大部分代码由 AI 辅助编写，由 6.2Astra 和 Opus5.5 一起维护，按现状提供，不提供任何担保。
 - 发现安全问题请看 [SECURITY.md](SECURITY.md)，参与贡献请看 [CONTRIBUTING.md](CONTRIBUTING.md)。

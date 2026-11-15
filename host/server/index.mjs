@@ -358,7 +358,8 @@ export async function createSelfHostServer(options = {}) {
         startedAt: bootAt,
         publicUrl: origin,
         model,
-        host,
+        host: { ...host, waitingForExecutionNode: !host.connected &&
+          process.env.GROKBOT_REQUIRE_EXECUTION_NODE === '1' && !executionNode.store.value.config.enabled },
         devices: push.devices(),
         pairingKeys: auth.pairingKeys(),
         notifications: {

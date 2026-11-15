@@ -14,6 +14,7 @@ import { applyReleaseRecipes } from '../../mac/patchers/desktop/release-recipes.
 import { acquireDesktopSource } from '../../mac/patchers/desktop/download-original.mjs';
 import { applicationIcon } from '../../windows/patchers/desktop/pe.mjs';
 import { unpackOriginal } from '../../windows/patchers/desktop/original.mjs';
+import { windowsInputs } from '../../windows/patchers/desktop/inputs.mjs';
 import { readZip, writeZip, createEntry, entryBytes, signApk, verifyApk, createSigningIdentity, certificateFingerprint } from './apk.mjs';
 import { RENDERER_PATCHES, applyPinnedRendererPatch } from './renderer-patches.mjs';
 import { checkBuildOutput, writeBuildOutput } from './output.mjs';
@@ -22,7 +23,6 @@ import { verifyShellVersion, verifyClientVersions } from './shell-version.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const androidRoot = path.resolve(here, '..');
 const repo = path.resolve(androidRoot, '..');
-const windowsDesktop = path.join(repo, 'windows/patchers/desktop');
 const sharedAssets = ['i18n.mjs', 'external-url.mjs', 'connectors.mjs', 'workspace.css', 'workspace-keys.cjs'];
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 async function hashFile(filename) {
@@ -156,9 +156,8 @@ export async function loadSigningIdentity(filename) {
 async function main() {
   const args = process.argv.slice(2);
   const arg = name => { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : null; };
-  const supported = JSON.parse(await readFile(path.join(windowsDesktop, 'supported.json'), 'utf8'));
   const build = JSON.parse(await readFile(path.join(here, 'supported.json'), 'utf8'));
-  if (build.desktopVersion !== supported.version) throw new Error('Android renderer pin does not match the Windows source version.');
+  const { directory: windowsDesktop, supported } = await windowsInputs(build.desktopVersion);
   const { versionName, versionCode } = build.shell;
   if (!/^\d+\.\d+\.\d+$/.test(versionName) || !Number.isSafeInteger(versionCode) || versionCode <= 0)
     throw new Error('Invalid Android shell version pin.');

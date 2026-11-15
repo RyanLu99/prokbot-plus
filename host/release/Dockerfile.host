@@ -1,5 +1,5 @@
 ARG PATCH_IMAGE=grokbot-patch-base:local
-ARG RUNTIME_IMAGE
+ARG RUNTIME_IMAGE=grokbot-box-input:9d2ac1b
 FROM ${PATCH_IMAGE} AS patch
 COPY inputs/host.tgz /inputs/host.tgz
 RUN python3 release/patch-host.py --archive /inputs/host.tgz --output /generated

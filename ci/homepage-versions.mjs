@@ -23,7 +23,7 @@ export async function readVersions() {
   for (const v of [snap.windows.version, snap.mac.version, snap.ios.version, win.version, mac.version, ios.version,
     android.desktopVersion, android.shell.versionName]) assert.match(v, version);
   assert.ok(Number.isSafeInteger(android.shell.versionCode) && android.shell.versionCode > 0);
-  assert.equal(android.desktopVersion, win.version); assert.match(ios.build, /^\d+$/);
+  assert.match(ios.build, /^\d+$/);
   assert.match(host.archive.version, /^[a-f0-9]{7,40}$/);
   const box = /^grokbot-box-input:([a-f0-9]{7,40})$/.exec(host.box.localTag);
   assert.ok(box); assert.equal(host.box.platform, 'linux/amd64');
@@ -41,7 +41,7 @@ function block(text, name, body) {
 
 function windowsNotes(observed, pin, checked, zh) {
   if (observed.version === pin.version && observed.observedArchiveSha256 === pin.archive.sha256) return { badge: '', table: '' };
-  // windows/README.md and windows/tools/compat/1.1.0/README.md document this installer and patch pin.
+  // known-unsupported.json records an official installer that this patch pin was run against and rejected.
   const researched = pin.version === checked.testedAgainst.version && pin.archive?.sha256 === checked.testedAgainst.sha256
     && ['version', 'build', 'observedArchiveSha256', 'observedAsarSha256'].every(field => observed[field] === checked[field]);
   if (researched) return {

@@ -8,8 +8,8 @@ Windows, macOS and iOS patches | [Independently developed Android app (unofficia
 
 <p>
 <!-- client-badges:start -->
-  <a href="#client-versions"><img alt="Windows official 1.1.0 x64 (incompatible with this patch)" src="https://img.shields.io/badge/Windows%20official-1.1.0%20x64%20(incompatible%20with%20this%20patch)-0078D4?logo=windows&logoColor=white"></a>
-  <a href="#client-versions"><img alt="Windows patch accepts only 0.71.2 x64" src="https://img.shields.io/badge/Windows%20patch%20accepts%20only-0.71.2%20x64-237E55?logo=windows&logoColor=white"></a>
+  <a href="#client-versions"><img alt="Windows official 1.1.0 x64" src="https://img.shields.io/badge/Windows%20official-1.1.0%20x64-0078D4?logo=windows&logoColor=white"></a>
+  <a href="#client-versions"><img alt="Windows patch accepts only 1.1.0 x64" src="https://img.shields.io/badge/Windows%20patch%20accepts%20only-1.1.0%20x64-237E55?logo=windows&logoColor=white"></a>
   <a href="#client-versions"><img alt="macOS official 1.1.0 ARM64" src="https://img.shields.io/badge/macOS%20official-1.1.0%20ARM64-111111?logo=apple&logoColor=white"></a>
   <a href="#client-versions"><img alt="iOS official 1.25.0" src="https://img.shields.io/badge/iOS%20official-1.25.0-111111?logo=apple&logoColor=white"></a>
   <a href="#client-versions"><img alt="Android shell 1.1.0" src="https://img.shields.io/badge/Unofficial%20Android-1.1.0-237E55?logo=android&logoColor=white"></a>
@@ -29,7 +29,7 @@ Windows, macOS and iOS patches | [Independently developed Android app (unofficia
 
 | Platform | Latest official release | Input accepted by Plus / shell version |
 | --- | --- | --- |
-| Windows x64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) (installer rejected during input verification; no native chat test) | 0.71.2 |
+| Windows x64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) | 1.1.0 |
 | macOS ARM64 | [1.1.0](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) | 0.71.2; no Mac hardware test |
 | iOS | [1.25.0](https://apps.apple.com/us/app/grok-bot/id6794501026) | 1.16.0 (23152); no iPhone or iPad hardware test |
 | Android 9+ (unofficial) | Does not use the official Android APK | Shell **1.1.0** (build 10100), renderer from Windows **0.71.2** |
@@ -65,11 +65,11 @@ Plus adds on top of that: **Windows and Android clients**; **two more model APIs
 
 | Part | Supported | Notes |
 | --- | --- | --- |
-| Server | Linux x86_64 or ARM64 | x86_64 tested on Ubuntu 24.04 + Docker 29. A native Host on Oracle Ampere A1 with a separate amd64 desktop passed two-turn chat and VNC control tests. Emulating the desktop on a single ARM machine remains experimental. [Choose a deployment](docs/AI-INSTALL.en.md#choose-a-deployment) |
-| Windows client | Windows 10 / 11, x64 | **New in this version.** Portable version and installer, no administrator rights needed |
+| Server | Linux x86_64 or ARM64 | Earlier x86_64 testing used Ubuntu 24.04 and Docker 29. Historical A1 tests covered chat and VNC between a native ARM64 Host and a separate amd64 desktop, not an A1 build, upgrade or capacity test in this round. Single-machine ARM emulation remains experimental. [Choose a deployment](docs/AI-INSTALL.en.md#choose-a-deployment) |
+| Windows client | Windows 10 / 11, x64, Grok Bot 1.1.0 | Portable version and installer, no administrator rights needed. Pairing, a two-turn chat, attachments, search, local commands and a restart were verified with the patched client on Windows. |
 | Mac client | Apple Silicon, Grok Bot 0.71.2 | No Mac was available for this round. The desktop code shared with Windows was tested, but installation, launch, pairing and chat were not verified on macOS. |
 | iOS client | Grok Bot 1.16.0 (23152) | No iPhone or iPad was available for this round. The patch tool was tested, but signing, installation, pairing and chat were not verified on a device. Installation still requires your own decrypted IPA and signing certificate. |
-| Android client | Android 9 or later | Independently developed, unofficial shell. Build from the pinned Windows input and keep your original signing key. |
+| Android client | Android 9 or later | Independently developed, unofficial shell. Build from the pinned Windows 0.71.2 input and keep your original signing key. |
 | Linux desktop client | No patch from this project | [The official app is available on Linux](https://docs.x.ai/grok-bot/deployment). It is not the amd64 execution desktop image used by the server. |
 
 ## What's new in this version
@@ -87,14 +87,15 @@ Plus adds on top of that: **Windows and Android clients**; **two more model APIs
   </tr>
 </table>
 
-Upstream has only Mac and iOS. The Windows version is built by patching the official 0.71.2 Windows installer, and its interface matches the official Windows version:
+Upstream has only Mac and iOS. The Windows version is built by patching the latest official Windows installer, 1.1.0, and its interface matches the official Windows version:
 
-- Stays in the system tray, system notifications, attachments, Tailcat;
+- Stays in the system tray, system notifications, attachments, message search, Tailcat;
 - Local command execution (PowerShell, Chinese output is not garbled);
 - Hands complex coding work to Codex on your computer;
+- Voice input and real-time voice calls are served by the Host;
 - Builds both a portable version and an installer.
 
-The patches are ported from the Mac version, and the structure of every segment is checked.
+Every change in the patch is anchored to a unique location in the original file. A generator in the repository rebuilds the patch from the official installer and checks it byte for byte.
 
 ### Android client
 
@@ -113,7 +114,7 @@ The official Android app carries tamper protection and cannot be modified. Plus 
 - Background notifications without Google's push service; tapping one opens that Bot;
 - The device credential is encrypted with the Android Keystore and never reaches the web page.
 
-The APK is signed with a key that belongs only to you. Tailcat is not supported; for access from outside, use a VPN, a tunnel or an HTTPS domain. See [Android client](android/README.en.md).
+The APK is signed with your own key. Tailcat is not supported; for access from outside, use a VPN, a tunnel or an HTTPS domain. See [client installation](docs/AI-INSTALL.en.md#client-packages) for the build and signing-key backup instructions.
 
 ### Three model APIs
 
@@ -165,12 +166,12 @@ See the [CHANGELOG](CHANGELOG.md) and the [technical documentation](docs/ARCHITE
   - Tasks triggered by webhooks;
   - Write your own apps (plugins);
   - Bot collaboration across several Hosts;
-  - Backup and restore of managed data volumes (not images or the host OS).
+  - Back up the project's managed Docker data volumes and restore them into a new project. Images, the instance `.env` and the host OS are not included. See [backup and recovery](docs/AI-INSTALL.en.md#volume-recovery).
 
 **Trade-offs**
 
-- You need a Linux server and handle upgrades and backups yourself. The table below separates the measured limits by deployment mode.
-- Versions are pinned: client 0.71.2, iOS 1.16.0, Host `d0a4baa`. When the official apps update, you have to wait for the patches to catch up before upgrading, and there are no automatic updates.
+- You need Linux and are responsible for upgrades and backups. The evidence for each deployment mode is listed below.
+- Versions are pinned: Windows client 1.1.0, Mac client and Android interface 0.71.2, iOS 1.16.0, Host `d0a4baa`. When the official apps update, you have to wait for the patches to catch up before upgrading, and there are no automatic updates.
 - Results depend on the model you choose. The official service is tuned for its own models. With other models, the experience may not be as good.
 - Some official features are turned off or replaced:
   - Turned off: virtual cards, external message drafts, product feedback, passkey forwarding;
@@ -183,24 +184,24 @@ See the [CHANGELOG](CHANGELOG.md) and the [technical documentation](docs/ARCHITE
 
 ## What you need to deploy
 
-**Published packages and verified limits (November 14, 2026)**
+Check the [client versions](#client-versions) before installing. The patch tools require the pinned originals. The [official changelog](https://x.ai/changelog/bot) does not establish self-hosted client compatibility.
 
-- Plus distributes platform tools. `v1.0.0` had no Android ZIP; 1.1.0 includes one. The chat screenshot is a real earlier run of the unofficial shell, not a test of the new vendor renderer.
-- See [client versions](#client-versions) for vendor releases versus accepted inputs. Updating client tools does not require an existing Host to be upgraded or reinstalled.
-
-| Deployment mode | Tested minimum | Tested recommendation | Disk | Measured workload and limits |
+| Deployment | Tested minimum | Tested recommendation | Disk | Workload and observed limits |
 | --- | --- | --- | --- | --- |
-| x86_64 Host and amd64 desktop together | Not established | Not established | 50 GiB was an earlier test disk, not a minimum | Neither timed 2-vCPU / 2-GiB chat diagnostic delivered all replies on time. The 2-vCPU / 4-GiB and 4-vCPU / 8-GiB guests have fresh-install functional observations, not three one-hour rounds. |
-| ARM64 Host + separate amd64 desktop | Neither machine rated | Neither machine rated | Budget images, data and backups on both machines; no rating | Historical chat and desktop control do not establish Docker build, upgrade or sustained capacity for this candidate on both machines. |
-| ARM64 Host with emulated amd64 desktop | Not established | Not established | Not established | Experimental; no whole-machine capacity rating. |
-| Host alone, no execution node | Not established | Not established | Not established | Setup and management only. Without an enabled execution node the chat core does not start; this is not a complete chat deployment. |
+| x86_64 Host and desktop together | Not established | Not established | 50 GiB test guest, not a minimum | The older baseline completed a two-turn chat on 2 vCPU / 2 GiB without swap; a background model disconnect also restarted its core. Both timed 2C2G candidate diagnostics failed. The 2C4G and 4C8G VMs have separate functional observations, not capacity ratings. |
+| ARM64 Host and separate amd64 desktop | Neither machine rated | Neither machine rated | Budget images, data and backups separately for each machine | Historical A1 chat and desktop tests did not measure capacity on both machines in this upgrade. |
+| ARM64 Host and emulated amd64 desktop | Not established | Not established | Allow for images of both architectures | Experimental. An amd64 preflight does not establish desktop stability. |
+| Host only, no remote execution node configured | Not applicable | Not a standalone chat deployment | Host image, data and backups; amd64 builds still use the desktop base | `--host-only` selects split deployment. The chat core starts only after a model is configured and a remote execution node enabled. The console and its setup health check can work before then. |
 
-External model inference is outside these guest allocations; local inference requires its own budget. The older 8-GB RAM / 30-GB disk figures were planning allowances, not measured minima. Backups contain managed volumes, not images, the instance `.env` or the host OS. These observations do not establish lossless upgrades or failure recovery for a new release.
+**Timed 2C2G diagnostics** (vCPU / GiB): Both runs tested the candidate. Two of three requests met the first run's deadline. No matching reply was recorded within 55 seconds for the third, and there is no receipt establishing later delivery. One upstream model call during that period took 81.68 seconds; this is not Host processing time. In the second run, four replies arrived in 8.524, 10.272, 17.608 and 24.200 seconds. The fifth missed its deadline. Neither run reached one hour or establishes a hardware tier.
 
+**2C4G and 4C8G functional observations:** Each configuration ran in its own VM. Both completed device pairing, a 52-byte attachment, two real-model turns and cancellation. After an explicit Host restart, the originally paired device read back the same IDs, message bodies, attachment SHA-256 and model configuration. On 2C4G, the fresh-install build took 519.14 seconds and the first/follow-up replies took 100.24/2.08 seconds. On 4C8G, the build took 589.05 seconds and the replies took 106.02/2.16 seconds. These are single functional observations for each VM, not capacity tests, matched before/after comparisons or hardware recommendations.
+
+Inference ran on another machine and is outside those VM allocations. Budget disk separately for build caches, live data and backups. Run [capacity tests](docs/ARCHITECTURE.en.md#capacity-evidence) only on dedicated, authorized non-production VMs. Do not use production instances, volumes or credentials for this upgrade rehearsal or load test.
 
 | Required | Requirements |
 | --- | --- |
-| Server | 64-bit Linux, Docker Compose v2 and Python 3.10+. See the table above for tested limits; allow separate space for build caches and backups. A local ARM desktop also needs QEMU/binfmt |
+| Server | 64-bit Linux, Docker Compose supporting both `--wait` and `--wait-timeout` on `up`, and Python 3.10+. ARM desktop emulation also needs QEMU/binfmt. The previous guide's 8 GB of RAM and 30 GB of free disk are planning allowances, not tested minimums or recommendations. |
 | Model API | Any one of: Anthropic Messages, OpenAI Responses, OpenAI Chat Completions. It must support tool calls. For the Bot to operate a computer, it also needs image input |
 | Computer to build the clients | Build the Windows client on Windows 10/11 x64 and the Mac client on an Apple Silicon Mac; the Android client builds on Windows, Mac or Linux. All need Node.js 22.12+. iOS needs a decrypted IPA and a signing certificate |
 
@@ -234,8 +235,9 @@ The [latest release](https://github.com/ferretgeek/prokbot-plus/releases/latest)
 | --- | --- |
 | [AI deployment guide](docs/AI-INSTALL.en.md) | Full steps for deploying from scratch. Every step says what you should see and what to do if it fails |
 | [Technical documentation](docs/ARCHITECTURE.en.md) | How it works, how each feature is implemented, what Plus changed, the layout, tests, extension points and known limitations |
-| [Windows client](windows/README.en.md) · [Mac client](mac/README.en.md) · [iOS client](ios/README.en.md) · [Android client](android/README.en.md) | How to use the patches for each platform |
-| [Split deployment, backups and app development](host/README.en.md) | Advanced usage |
+| [Maintainer handoff](docs/HANDOFF.en.md) | Released code, edit points, test inputs, recovery and release |
+| [Client installation and platform guides](docs/AI-INSTALL.en.md#client-packages) | Pinned inputs and where to find the instructions inside each platform package |
+| [Split deployment](docs/AI-INSTALL.en.md#split-host), [volume recovery](docs/AI-INSTALL.en.md#volume-recovery), [app development](docs/ARCHITECTURE.en.md#app-development) | Advanced usage; these sections are included in every package |
 
 ## Friends
 
@@ -249,5 +251,5 @@ The [latest release](https://github.com/ferretgeek/prokbot-plus/releases/latest)
   - See [NOTICE](NOTICE) for the source and the list of changes.
 - The repository contains no official Grok Bot programs or finished client APKs or IPAs. `android/dist/` contains only the independently developed empty shell. The desktop interface comes from your own verified Windows installer.
 - Grok, Grok Bot and related trademarks belong to their respective owners. This project is not affiliated with or endorsed by them.
-- Most of the code in this project was written with AI assistance. It is provided as is, without any warranty.
+- Most of the code in this project was written with AI assistance and is maintained by 6.2Astra and Opus5.5 together. It is provided as is, without any warranty.
 - To report a security issue, see [SECURITY.md](SECURITY.md). To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -10,7 +10,7 @@
 
 官方 Android 版（`ai.x.grok.bot` 1.16.0）带有 Google Play 的防篡改保护，改动后无法运行，绕过这种保护不在本项目的范围内。所以 Android 客户端换了一种做法：
 
-- 界面用官方**桌面版**的界面，和 Windows、Mac 客户端完全相同，取自你自己下载的官方 Windows 0.71.2 安装包；
+- 界面用官方**桌面版** 0.71.2 的界面，和 Mac 客户端相同，取自你自己下载的官方 Windows 0.71.2 安装包；
 - 外面套一个本项目编写的 Android 外壳（`shell/`），负责连接 Host、保存凭据、通知、文件和返回键等手机功能。
 
 Android 安装的是**本项目自开发的外壳** `dev.grokbot.local`：`versionName` **1.1.0**，`versionCode` **10100**。Windows 界面来源仍固定为 **0.71.2**。外壳升级不代表支持新版界面，也不会改变已安装应用的包名。
@@ -23,7 +23,7 @@ Android 安装的是**本项目自开发的外壳** `dev.grokbot.local`：`versi
 node android/patchers/patch.mjs
 ```
 
-工具自动下载并校验官方 `Grok_Bot_0.71.2_Setup.exe`（和 Windows 客户端用的是同一个文件），在 `android/output/` 生成：
+工具自动下载并校验官方 `Grok_Bot_0.71.2_Setup.exe`（Windows 客户端已改用 1.1.0 安装包，两者不是同一个文件），在 `android/output/` 生成：
 
 | 输出 | 用途 |
 | --- | --- |
@@ -77,7 +77,7 @@ node android/patchers/patch.mjs
 ## 维护
 
 - `client/`：运行在 WebView 里的桥接代码，代替 Electron 的主进程和 preload；`patchers/renderer-patches.mjs`：对官方界面的少量修改（逐个文件校验 SHA-256，锚点必须唯一）。
-- `shell/`：Android 外壳源码（Kotlin，不依赖第三方库）。发布新版外壳时，同步修改 `shell/app/build.gradle.kts` 和 `patchers/supported.json` 的 `shell.versionName`、`shell.versionCode`。版本码须高于上一版（旧外壳随界面编号，版本码为 7102）。未经新版 Windows 输入和 recipe 验证，不改 `desktopVersion` 或界面摘要。
+- `shell/`：Android 外壳源码（Kotlin，不依赖第三方库）。发布新版外壳时，同步修改 `shell/app/build.gradle.kts` 和 `patchers/supported.json` 的 `shell.versionName`、`shell.versionCode`。版本码须高于上一版（旧外壳随界面编号，版本码为 7102）。未经新版 Windows 输入和 recipe 验证，不改 `desktopVersion` 或界面摘要。`desktopVersion` 与 Windows 客户端的版本不同时，其 Windows 输入和 recipe 在 `windows/patchers/desktop/<版本>/`（目前为 `0.71.2/`）。
 - 修改外壳后执行 `node android/shell/release-shell.mjs`。工具先核对编译后的清单，再更新 `dist/grokbot-android-shell.apk` 和摘要。需要 JDK 17+ 和 Android SDK（`ANDROID_HOME`）；已缓存 Gradle 发行包和依赖时可加 `--offline`，Gradle 只用一个 worker。
 - 测试：`node --test "android/tests/*.test.mjs"`
 
