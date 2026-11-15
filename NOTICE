@@ -178,6 +178,11 @@ adapter and admin changes in items 13 to 18 are released. The Windows
 installer acceptance workflow is an inactive template under ci/. Official
 programs and generated clients are not distributed.
 
+ProkBot Plus 1.2.1 (2026-11-16): android/client/compat.js adds built-in
+functions missing from older Android System WebView builds before the
+interface and the pairing page run, and explains a page that did not start
+instead of leaving it blank.
+
 Third-party components
 ----------------------
 

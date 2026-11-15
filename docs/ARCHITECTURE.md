@@ -273,6 +273,9 @@ python host/network/build-tailcat.py --target windows-amd64 --output windows/dis
   - 宽度 600 px 以上沿用桌面排版；对话详情在 792 px 以下是全屏层，打开大画面时让开；
   - 隐藏在 Android 上没有意义的设置（硬件加速、本机访问、Tailcat）；宽图片按列宽缩放；
 - `anchor-fallback.js`：Chromium 125 以前的 WebView 不支持 CSS 锚点定位，电脑画面会缩成 0。兼容代码记录锚点名称和位置表达式，在布局后换算成像素。
+- `compat.js`：在界面和配对页之前运行的普通脚本（ES5 语法）：
+  - 官方界面直接调用比 WebView 更新的函数，例如 `URL.canParse`（Chromium 120）、`toSorted`（110）、`Object.hasOwn`（93）、`showPopover`（114）。旧 WebView 能解析页面，但渲染时出错，React 卸载整棵树后就是白屏。`compat.js` 只补齐缺少的函数，不替换已有实现；
+  - 页面没有启动时（低于 Chromium 89，配对页用了顶层 `await`），显示 WebView 版本、错误信息和需要更新的组件，而不是白屏。
 
 **生成工具**（`android/patchers/patch.mjs`）：
 

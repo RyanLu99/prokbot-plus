@@ -273,6 +273,9 @@ The official Android app (`ai.x.grok.bot` 1.16.0) is a React Native app with Goo
   - From 600 px up the desktop layout stays; below 792 px conversation details are a full-screen layer that steps aside for the large computer view.
   - Settings that mean nothing on Android (hardware acceleration, local access, Tailcat) are hidden; wide images are scaled to the column.
 - `anchor-fallback.js`: WebView builds before Chromium 125 lack CSS anchor positioning, and the computer view collapses to nothing. The fallback records anchor names and position expressions and turns them into pixels after layout.
+- `compat.js`: a classic script in ES5 syntax that runs before the interface and the pairing page.
+  - The official interface calls built-ins newer than the WebView without checking for them, for example `URL.canParse` (Chromium 120), `toSorted` (110), `Object.hasOwn` (93) and `showPopover` (114). An older WebView parses the page, rendering throws, and React unmounts the whole tree, leaving a blank page. `compat.js` only adds missing functions and never replaces existing ones.
+  - If a page does not start (below Chromium 89, because the pairing page uses top-level `await`), it shows the WebView version, the error and what to update instead of a blank page.
 
 **The builder** (`android/patchers/patch.mjs`):
 

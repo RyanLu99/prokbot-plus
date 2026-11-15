@@ -32,7 +32,8 @@ async function hashFile(filename) {
 }
 const exists = async filename => { try { await stat(filename); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } };
 
-export const BRIDGE_TAGS = '<script src="../client/boot-data.js"></script>\n    <script src="../client/desktop/workspace-keys.js"></script>\n    <script type="module" src="../client/bridge.js"></script>\n    <link rel="stylesheet" href="../client/android.css">\n    <link rel="stylesheet" href="../client/desktop/workspace.css">\n    ';
+// compat.js is a classic script: it runs before every module, so missing built-ins exist first.
+export const BRIDGE_TAGS = '<script src="../client/boot-data.js"></script>\n    <script src="../client/compat.js"></script>\n    <script src="../client/desktop/workspace-keys.js"></script>\n    <script type="module" src="../client/bridge.js"></script>\n    <link rel="stylesheet" href="../client/android.css">\n    <link rel="stylesheet" href="../client/desktop/workspace.css">\n    ';
 const MODULE_ANCHOR = '<script type="module" crossorigin src="./assets/index-';
 const FRAME_ANCHOR = 'frame-src sand-html-preview: sand-canvas: sand-mcp-app:;';
 

@@ -122,3 +122,5 @@ window.__grokbotAndroid = Object.freeze({
 const dark = matchMedia('(prefers-color-scheme: dark)').matches;
 void native('theme', { dark, background: dark ? '#111111' : '#ffffff' }).catch(() => {});
 render();
+// compat.js shows an explanation instead of a blank form if this point is never reached.
+window.__grokbotStarted = true;

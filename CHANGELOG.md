@@ -4,6 +4,15 @@
 
 Versions start at ProkBot Plus 1.0.0. Upstream ProkBot releases are listed at the end for reference.
 
+## ProkBot Plus 1.2.1 (2026-11-16)
+
+Android 修复：在较旧的 Android System WebView 上（例如鸿蒙「卓易通」等兼容环境），配对成功后界面一直白屏（[#3](https://github.com/ferretgeek/prokbot-plus/issues/3)）。其他平台和 Host 与 1.2.0 相同。
+
+Android fix: on older Android System WebView builds (for example in compatibility layers such as HarmonyOS 卓易通), the interface stayed blank after pairing ([#3](https://github.com/ferretgeek/prokbot-plus/issues/3)). Other platforms and the Host are unchanged from 1.2.0.
+
+- **旧版 WebView / Older WebView**：官方界面直接调用比系统 WebView 新的函数（`URL.canParse`、`toSorted`、`findLast`、`Object.hasOwn`、`at`、`crypto.randomUUID`、`showPopover` 等），WebView 89 到 119 上渲染出错，React 卸载整个界面，只剩白屏。新增的 `android/client/compat.js` 在界面和配对页之前补齐缺少的函数，不替换已有实现。WebView 低于 89 时，配对页和界面会显示 WebView 版本、错误信息和需要更新的组件，而不是白屏或空表单。APK 外壳仍是 1.1.0 (10100)；用新的 Android 工具包重新生成后覆盖安装即可。The official interface calls built-ins newer than the system WebView without checking for them (`URL.canParse`, `toSorted`, `findLast`, `Object.hasOwn`, `at`, `crypto.randomUUID`, `showPopover` and others). On WebView 89 to 119, rendering threw, React unmounted the interface and the page stayed blank. The new `android/client/compat.js` runs before the interface and the pairing page and adds missing functions without replacing existing ones. Below WebView 89, both pages show the WebView version, the error and what to update instead of a blank page or an empty form. The APK shell is still 1.1.0 (10100); rebuild with the new Android tools and install over the existing app.
+- **验证 / Validation**：Android 15 模拟器（WebView 124）在页面脚本运行前删除这些函数后，不加载 `compat.js` 时白屏并报 `Object.hasOwn is not a function`，与 #3 的现象一致；加载后工作区、Bot 列表和带图片的历史对话正常显示，没有错误。Android 11 模拟器（WebView 83）上，配对页和界面都显示说明。没有在鸿蒙「卓易通」真机上验证。On an Android 15 emulator (WebView 124) with these functions removed before any page script, the interface stayed blank with `Object.hasOwn is not a function` without `compat.js`, matching #3; with it, the workspace, the Bot list and a history with images displayed without errors. On an Android 11 emulator (WebView 83), the pairing page and the interface showed the explanation. Not verified on a HarmonyOS 卓易通 device.
+
 ## ProkBot Plus 1.2.0 (2026-11-16)
 
 Windows 补丁跟进官方 1.1.0；Mac 和自开发 Android 外壳仍使用 0.71.2 界面，Android APK 不变。Windows 用户需用官方 1.1.0 安装包重新生成客户端，已有的 Host 无需为此升级。本版同时包含 1.1.0 之后的客户端修复，以及 Host 的部署、备份与恢复、模型接口和管理页改动；这些 Host 改动要按[部署手册](docs/AI-INSTALL.md)更新服务端后才生效，更新前先备份。

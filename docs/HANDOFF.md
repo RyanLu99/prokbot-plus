@@ -4,10 +4,11 @@
 
 ## 从哪里接手
 
-交接基线：2026-11-16。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.2.0..main` 和 `git status --short` 核对。
+交接基线：2026-11-16。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.2.1..main` 和 `git status --short` 核对。
 
 | 层级 | 内容 |
 | --- | --- |
+| Plus Release `v1.2.1` | Android 旧版 WebView 兼容：`android/client/compat.js` 补齐官方界面直接调用的较新函数，页面没有启动时显示说明（[#3](https://github.com/ferretgeek/prokbot-plus/issues/3)）。其余与 `v1.2.0` 相同。 |
 | Plus Release `v1.2.0` | 五个平台工具 ZIP 和 `SHA256SUMS.txt`。Windows 补丁接受官方 1.1.0：`windows/tools/desktop-recipes/` 生成 recipe，`mac/clients/desktop/` 增加按边注册、听写、搜索转接等 1.1.0 接口；0.71.2 输入移到 `windows/patchers/desktop/0.71.2/` 供 Android 使用。Host：`host/deploy.py`、`host/release/` 的备份、镜像识别和恢复；`host/runtime/` 的三种模型协议、流式响应和工具顺序；`host/server/`、`host/tools/host-admin.mjs` 的管理页和 CLI；`host/bench/` 容量测量。 |
 | Plus Release `v1.1.0` (`43c6d59`) | 客户端工具发布，没有升级 Host；Windows 补丁仍要求 0.71.2。 |
 
@@ -45,7 +46,7 @@ node windows/tools/desktop-recipes/build.mjs --source $windows --check
 node android/patchers/patch.mjs --source $env:PROKBOT_ANDROID_TEST_SOURCE --verify-only
 ```
 
-2026-11-16 发布 `v1.2.0` 前复验：Host 132 项通过、1 项仅限 Linux 的符号链接用例跳过；Windows 27/27（删除了两项 1.1.0 研究回放测试，新增 recipe 生成测试）、共享桌面 58/58、Android 52/52（含 0.71.2 原包）、CI 工具 45/45。Host 的部署用例需要 Windows 自带的 `tar.exe`；在 Git Bash 中运行时，PATH 里的 `/usr/bin/tar` 会让两项用例失败，应把 `C:\Windows\System32` 放在前面。生成的 1.1.0 便携版已在 Windows 11 上连接自部署 Host 验收，范围见[桌面版本与兼容性](ARCHITECTURE.md#desktop-compatibility)。仍未验收：真实语音识别、实时语音连接真实 Host、对真实 Host 的断网重连（只用本地模拟 Host 验证），以及用安装包覆盖升级真实的 0.71.2 安装（只验证了复制的 0.71.2 配置目录）；Mac、iPhone 和 iPad 没有本轮真机验收。
+2026-11-16 发布 `v1.2.1` 前复验：Host 132 项通过、1 项仅限 Linux 的符号链接用例跳过；Windows 27/27（删除了两项 1.1.0 研究回放测试，新增 recipe 生成测试）、共享桌面 58/58、Android 56/56（含 0.71.2 原包和 4 项旧版 WebView 兼容测试）、CI 工具 45/45。旧版 WebView 在 Android 11 模拟器（WebView 83）和删除了较新函数的 Android 15 模拟器（WebView 124）上验证，没有鸿蒙「卓易通」真机。Host 的部署用例需要 Windows 自带的 `tar.exe`；在 Git Bash 中运行时，PATH 里的 `/usr/bin/tar` 会让两项用例失败，应把 `C:\Windows\System32` 放在前面。生成的 1.1.0 便携版已在 Windows 11 上连接自部署 Host 验收，范围见[桌面版本与兼容性](ARCHITECTURE.md#desktop-compatibility)。仍未验收：真实语音识别、实时语音连接真实 Host、对真实 Host 的断网重连（只用本地模拟 Host 验证），以及用安装包覆盖升级真实的 0.71.2 安装（只验证了复制的 0.71.2 配置目录）；Mac、iPhone 和 iPad 没有本轮真机验收。
 
 ## 运维与发布
 

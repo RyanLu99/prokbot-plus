@@ -4,10 +4,11 @@
 
 ## Starting point
 
-Handoff dated November 16, 2026. Upstream ProkBot is based on `3e9fe8c`. The table lists the downloadable releases; check later changes with `git log v1.2.0..main` and `git status --short`.
+Handoff dated November 16, 2026. Upstream ProkBot is based on `3e9fe8c`. The table lists the downloadable releases; check later changes with `git log v1.2.1..main` and `git status --short`.
 
 | Baseline | Contents |
 | --- | --- |
+| Plus Release `v1.2.1` | Older Android WebView support: `android/client/compat.js` adds newer built-ins that the official interface calls directly and explains a page that did not start ([#3](https://github.com/ferretgeek/prokbot-plus/issues/3)). Otherwise the same as `v1.2.0`. |
 | Plus Release `v1.2.0` | Five platform tool ZIPs and `SHA256SUMS.txt`. The Windows patcher accepts official 1.1.0: `windows/tools/desktop-recipes/` generates the recipes, and `mac/clients/desktop/` adds the 1.1.0 interfaces (per-edge registration, dictation, search mapping). The 0.71.2 inputs moved to `windows/patchers/desktop/0.71.2/` for Android. Host: backups, image identification and recovery in `host/deploy.py` and `host/release/`; three model protocols, streams and tool ordering in `host/runtime/`; management UI and CLI in `host/server/` and `host/tools/host-admin.mjs`; capacity measurement in `host/bench/`. |
 | Plus Release `v1.1.0` (`43c6d59`) | A client-tools release, not a Host upgrade; the Windows patcher still required 0.71.2. |
 
@@ -45,7 +46,7 @@ node windows/tools/desktop-recipes/build.mjs --source $windows --check
 node android/patchers/patch.mjs --source $env:PROKBOT_ANDROID_TEST_SOURCE --verify-only
 ```
 
-Rechecked before releasing `v1.2.0` on November 16: Host 132 passed, one Linux-only symlink test skipped; Windows 27/27 (two 1.1.0 research replay tests removed, recipe generator tests added), shared desktop 58/58, Android 52/52 (with the 0.71.2 original), CI tools 45/45. The Host deployment tests need Windows' own `tar.exe`; under Git Bash, `/usr/bin/tar` on PATH makes two of them fail, so put `C:\Windows\System32` first. A generated 1.1.0 portable build was accepted against a self-hosted Host on Windows 11; see [desktop compatibility](ARCHITECTURE.en.md#desktop-compatibility) for the scope. Still not accepted: real speech recognition, real-time voice against a real Host, reconnect against a real Host (only a local mock Host was used), and running the installer over a real 0.71.2 install (only a copied 0.71.2 profile was tested). No Mac, iPhone or iPad hardware acceptance was performed this round.
+Rechecked before releasing `v1.2.1` on November 16: Host 132 passed, one Linux-only symlink test skipped; Windows 27/27 (two 1.1.0 research replay tests removed, recipe generator tests added), shared desktop 58/58, Android 56/56 (with the 0.71.2 original and four older-WebView compatibility tests), CI tools 45/45. Older WebView support was checked on an Android 11 emulator (WebView 83) and on an Android 15 emulator (WebView 124) with the newer built-ins removed, not on a HarmonyOS 卓易通 device. The Host deployment tests need Windows' own `tar.exe`; under Git Bash, `/usr/bin/tar` on PATH makes two of them fail, so put `C:\Windows\System32` first. A generated 1.1.0 portable build was accepted against a self-hosted Host on Windows 11; see [desktop compatibility](ARCHITECTURE.en.md#desktop-compatibility) for the scope. Still not accepted: real speech recognition, real-time voice against a real Host, reconnect against a real Host (only a local mock Host was used), and running the installer over a real 0.71.2 install (only a copied 0.71.2 profile was tested). No Mac, iPhone or iPad hardware acceptance was performed this round.
 
 ## Operations and release
 

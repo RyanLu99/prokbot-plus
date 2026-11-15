@@ -71,7 +71,11 @@ The first build creates a signing key that belongs only to you (`~/.grokbot-loca
 - The Bot cannot run commands on the phone or operate it. "Teach a task" (recording a demonstration) is unavailable.
 - Updated Hosts list Android separately and do not grant desktop execution privileges to newly paired phones. Older Hosts remain compatible but classify phones as desktop clients.
 - Background notifications rely on a foreground service that keeps the connection, which shows a collapsible "keeping connected" notification. Some vendor systems restrict background apps; allow this app to run in the background or turn off battery optimization for it.
-- The interface runs in the system's Android System WebView. WebView 125 or later works best. Older versions (some vendor systems update slowly) also work: the Bot computer view is positioned by fallback code, and a few decorative elements may sit slightly differently.
+- The interface runs in the system's Android System WebView. It needs WebView 89 or later, displays fully from 111 and works best from 125:
+  - From 89 to 119, compatibility code supplies newer built-in functions that the official interface calls.
+  - Before 111, some colors and layouts may differ from the desktop app.
+  - Before 125, the Bot computer view is positioned by fallback code, and a few decorative elements may sit slightly differently.
+  - Below 89 (for example in some compatibility layers such as HarmonyOS 卓易通), the app shows the WebView version and what to update instead of a blank page. Update "Android System WebView" or Chrome from the app store.
 - The device credential is encrypted with the Android Keystore. The interface reaches the Host through a local gateway that listens only on `127.0.0.1` and uses fresh random credentials on every start, so the web page never sees the device token.
 
 ## Maintenance

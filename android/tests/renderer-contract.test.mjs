@@ -86,7 +86,7 @@ test('the HTML handoff preserves other CSP directives and orders the bridge befo
     '<script src="./stock.js"></script><script type="module" crossorigin src="./assets/index-fixture.js"></script></head>';
   const patched = androidIndexHtml(html);
   assert.deepEqual([...patched.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(m => m[1]), [
-    './stock.js', '../client/boot-data.js', '../client/desktop/workspace-keys.js', '../client/bridge.js', './assets/index-fixture.js',
+    './stock.js', '../client/boot-data.js', '../client/compat.js', '../client/desktop/workspace-keys.js', '../client/bridge.js', './assets/index-fixture.js',
   ]);
   assert.equal(patched.match(/content="([^"]+)"/)[1], policy.replace(frame, frame.slice(0, -1) + ' http://127.0.0.1:*;'));
   assert.throws(() => androidIndexHtml(html.replace(frame, `${frame} ${frame}`)));
