@@ -131,7 +131,7 @@ python3 -B bench/bench.py compare --before "$R/BEFORE" --after "$R/AFTER" > "$R/
 
 [指标计算](bench/telemetry.py)见 `summarize`：整机 CPU 百分比≠容器核数，整机内存≠容器内存或 RSS。采样峰值是下界，磁盘含系统写入，边界可能带入相邻一拍。OOM 或目标容器意外启停整轮失败，OOM 不跨层相加；应用内恢复另看回执/日志。披露 swap 容量、使用及换页增量；零容量却换页也失败，声称无需 swap 须关闭后重测。
 
-[两次 2C2G 超时、2C4G/4C8G 功能观察及历史 A1 记录](../README.md#部署需要什么)和[同盘补丁耗时](../docs/ARCHITECTURE.md#host-patch-measurement)均非容量对照。离线自检：`python3 -B bench/bench.py selftest`；选项：`sample --help`；回归：`node --test "tests/benchmark*.test.mjs"`。
+首页[服务器要求](../README.md#server-requirements)的最低和推荐配置只针对个人使用；它依据的两次 2C2G 超时、2C4G/4C8G 功能观察和历史 A1 记录，以及[同盘补丁耗时](../docs/ARCHITECTURE.md#host-patch-measurement)，都不是容量对照。离线自检：`python3 -B bench/bench.py selftest`；选项：`sample --help`；回归：`node --test "tests/benchmark*.test.mjs"`。
 
 ## 应用开发
 

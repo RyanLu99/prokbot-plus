@@ -10,7 +10,7 @@
 
 | 你有的机器 | 怎么部署 | 注意 |
 | --- | --- | --- |
-| 一台 x86_64 Linux | 默认，Host 和执行桌面都原生运行 | 基线有实际对话记录；本轮候选的两次 2C2G 限时诊断均未通过，没有实测最低或推荐档 |
+| 一台 x86_64 Linux | 默认，Host 和执行桌面都原生运行 | 最低 2 核 4 GB，推荐 4 核 8 GB；2 核 2 GB 实测不够。见[首页的服务器要求](../README.md#server-requirements) |
 | 一台 ARM64 Linux，例如 Oracle Ampere A1 | 默认，Host 原生运行，桌面经 QEMU 模拟 amd64 | **实验**。不是原生 ARM 桌面；先通过 `doctor`，实际速度取决于任务 |
 | ARM64 Linux + 一台 amd64 Linux | 在 Host 的 `doctor`、`init` 前加 `--host-only`；桌面放第二台 | ARM 机不下载或模拟桌面。以往在 A1 原生 Host 上验证过聊天和远端桌面控制，但未在 A1 上验证 Docker 构建、Compose 升级或本轮容量 |
 
@@ -21,7 +21,7 @@
 
 开始前一次问清：新装还是升级？服务器及 SSH 访问方式？客户端从哪访问（本机、专网、HTTPS 域名）？使用哪种模型接口、模型 ID、哪些客户端？密码和 API Key 由用户在管理页输入，不要贴到聊天、工单或日志。已有服务、域名、反向代理和防火墙不默认改动。本轮候选的升级、恢复演练和容量测试只允许使用获准的专用非生产实例；不得使用生产服务、数据卷或凭据。
 
-服务器需 Python 3.10+、可访问的 Linux Docker daemon、`up` 同时支持 `--wait` 和 `--wait-timeout` 的 Compose，以及 Git 或解压好的 Host 包。旧手册给同机桌面预留 8 GB 内存、30 GB 空闲磁盘；这不是通过持续负载验证的配置，构建缓存和备份另占空间。按[首页的部署模式表](../README.md#部署需要什么)查看实测限制。ARM 同机还需注册 x86-64 QEMU/binfmt，安装或变更前请机主确认。
+服务器需 Python 3.10+、可访问的 Linux Docker daemon、`up` 同时支持 `--wait` 和 `--wait-timeout` 的 Compose，以及 Git 或解压好的 Host 包。同机部署最低 2 核、4 GB 内存、30 GB 可用磁盘，推荐 4 核、8 GB、50 GB；构建缓存和备份另占空间，依据见[首页的服务器要求](../README.md#server-requirements)。ARM 同机还需注册 x86-64 QEMU/binfmt，安装或变更前请机主确认。
 
 全新 Ubuntu 24.04 可从系统仓库安装 `docker.io docker-compose-v2 docker-buildx python3 git`，启用 Docker，让部署用户获得使用权限并重新登录。仅 ARM 同机模式还需 `qemu-user-static binfmt-support`，用 `sudo update-binfmts --enable qemu-x86_64` 启用解释器，再跑 `doctor`。已有 Docker 的机器只补缺项；加入 `docker` 组相当于授予主机管理权限。
 

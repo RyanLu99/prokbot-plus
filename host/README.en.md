@@ -131,7 +131,7 @@ Exit `0`: one round / ≥3 pairs eligible for review, not certification. `1`: re
 
 [Metric calculations](bench/telemetry.py), `summarize`: guest CPU percentages are not container cores; guest RAM is not container RAM or RSS. Sampled peaks are lower bounds; disk includes system writes and phase bounds can include a neighboring tick. OOM or unexpected project-container lifecycle fails a round; do not sum OOM across layers. Check app recovery in receipts/logs. Disclose swap capacity, use and paging deltas; paging at zero capacity fails. Retest without swap before claiming it unnecessary.
 
-[Both 2C2G timeouts, 2C4G/4C8G functional runs and historical A1 checks](../README.en.md#what-you-need-to-deploy) and [same-disk patcher timings](../docs/ARCHITECTURE.en.md#host-patch-measurement) are not capacity comparisons. Offline smoke: `python3 -B bench/bench.py selftest`; options: `sample --help`; regressions: `node --test "tests/benchmark*.test.mjs"`.
+The minimum and recommended configurations under [server requirements](../README.en.md#server-requirements) cover personal use only. The 2C2G timeouts, 2C4G/4C8G functional runs and historical A1 checks behind them, and the [same-disk patcher timings](../docs/ARCHITECTURE.en.md#host-patch-measurement), are not capacity comparisons. Offline smoke: `python3 -B bench/bench.py selftest`; options: `sample --help`; regressions: `node --test "tests/benchmark*.test.mjs"`.
 
 ## App development
 

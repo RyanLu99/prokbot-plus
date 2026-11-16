@@ -10,7 +10,7 @@
 
 | Machines available | Deployment | What to expect |
 | --- | --- | --- |
-| One x86_64 Linux server | Default: native Host and execution desktop | The baseline has real chat coverage. Both timed 2C2G candidate diagnostics failed; no minimum or recommended configuration was established |
+| One x86_64 Linux server | Default: native Host and execution desktop | Minimum 2 cores / 4 GB, recommended 4 cores / 8 GB; 2 cores / 2 GB failed in testing. See [server requirements](../README.en.md#server-requirements) |
 | One ARM64 Linux server, such as Oracle Ampere A1 | Default: native Host and amd64 desktop under QEMU | **Experimental**. The desktop is not native ARM. Run `doctor` first; performance depends on the workload |
 | ARM64 Linux plus an amd64 Linux machine | Put `--host-only` before `doctor` and `init` on the Host; put the desktop on the second machine | ARM does not download or emulate the desktop. Historical native A1 tests covered chat and remote desktop control, not an A1 Docker build, Compose upgrade or capacity test in this round |
 
@@ -21,7 +21,7 @@ If you saved the model first, the old console waited indefinitely for the Host a
 
 Ask once: is this an installation or an upgrade? Which server and SSH access? How will clients reach it (local, private network, HTTPS domain)? Which model API, model ID and clients? Let the owner enter passwords and API keys in the console, not in chat, issues or logs. Do not change existing services, DNS, proxies or firewalls by default. Use only dedicated, authorized non-production instances for this candidate's upgrade, recovery and load tests. Do not use production services, volumes or credentials.
 
-Requirements: Python 3.10+, access to a Linux Docker daemon, Compose supporting both `--wait` and `--wait-timeout` on `up`, and Git or an extracted Host package. The previous guide allowed 8 GB RAM and 30 GB free disk for a local desktop; these are planning allowances, not sustained-load ratings. Build caches and backups also consume disk. See the [deployment mode table](../README.en.md#what-you-need-to-deploy) for measured limits. A local ARM desktop also needs a registered x86-64 QEMU/binfmt interpreter; ask the owner before changing system configuration.
+Requirements: Python 3.10+, access to a Linux Docker daemon, Compose supporting both `--wait` and `--wait-timeout` on `up`, and Git or an extracted Host package. With the desktop on the same machine, the minimum is 2 cores, 4 GB RAM and 30 GB free disk; 4 cores, 8 GB and 50 GB are recommended. Build caches and backups also consume disk; see [server requirements](../README.en.md#server-requirements) for the basis. A local ARM desktop also needs a registered x86-64 QEMU/binfmt interpreter; ask the owner before changing system configuration.
 
 On fresh Ubuntu 24.04 install `docker.io docker-compose-v2 docker-buildx python3 git` from the distribution, enable Docker, grant the deployment user access and log in again. For a local ARM desktop only, install `qemu-user-static binfmt-support`, enable the interpreter with `sudo update-binfmts --enable qemu-x86_64`, then run `doctor`. Only fill gaps on existing installations; membership in the `docker` group grants administrative control of the host.
 

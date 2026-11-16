@@ -4,6 +4,10 @@
 
 Versions start at ProkBot Plus 1.0.0. Upstream ProkBot releases are listed at the end for reference.
 
+## 未发布 / Unreleased
+
+- **主页 / Homepage**：中英文 README 重写，改成直白的说明，并写明服务器的最低配置（2 核、4 GB 内存、30 GB 硬盘）和推荐配置（4 核、8 GB、50 GB），依据是 2C2G 失败、2C4G 和 4C8G 的功能实测，以及生产实例的实际占用；只针对个人或家庭使用，多人负载未测。版本表的说明也改成直白的话。部署手册、技术文档、交接文档和 Host 说明随之更新，链接改到新锚点 `#server-requirements`（旧锚点保留）。只改文档，程序不变。Both READMEs were rewritten in plain language and now state the server minimum (2 cores, 4 GB RAM, 30 GB disk) and recommendation (4 cores, 8 GB, 50 GB), based on the failed 2C2G runs, the 2C4G and 4C8G functional runs and the production instance's actual usage; they cover one person or a household, and multi-user load is untested. The version table wording is plainer too. The deployment guide, technical documentation, handoff and Host README were updated to match and link to the new `#server-requirements` anchor (the old anchors still work). Documentation only; no program changes.
+
 ## ProkBot Plus 1.2.1 (2026-11-16)
 
 Android 修复：在较旧的 Android System WebView 上（例如鸿蒙「卓易通」等兼容环境），配对成功后界面一直白屏（[#3](https://github.com/ferretgeek/prokbot-plus/issues/3)）。其他平台和 Host 与 1.2.0 相同。

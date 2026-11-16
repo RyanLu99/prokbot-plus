@@ -52,6 +52,6 @@ node android/patchers/patch.mjs --source $env:PROKBOT_ANDROID_TEST_SOURCE --veri
 
 - **部署：**新装用 `doctor → init → up → status`。已有实例沿用原 `--home`、`--project` 和拓扑，再运行 `update`。`--host-only` 是分机部署的 Host 半边；聊天还需要模型配置和启用的 amd64 执行节点。详见[部署手册](AI-INSTALL.md#split-host)。
 - **恢复：**卷备份不含实例 `.env`、Docker 镜像或宿主机。`v1.1.0` 及更早版本的 `host/release/backup.py restore` 只恢复卷；`v1.2.0` 起有 `host/deploy.py recover --directory`，它记录不可变镜像 ID，停止旧身份，在新项目恢复并用原设备验证；切勿让旧镜像直接使用可能已迁移的卷。步骤见[卷备份与恢复](AI-INSTALL.md#volume-recovery)。
-- **容量：**`host/bench/bench.py selftest` 是离线自检；`validate` 检查一轮，`compare` 比较同机型、同负载的基线和候选。分机要采两台整机。2C2G 两次限时诊断未达标；2C4G、4C8G 有功能记录，无一小时三轮的最低／推荐档。见[容量证据](ARCHITECTURE.md#capacity-evidence)。
+- **容量：**`host/bench/bench.py selftest` 是离线自检；`validate` 检查一轮，`compare` 比较同机型、同负载的基线和候选。分机要采两台整机。首页的最低（2 核 4 GB）和推荐（4 核 8 GB）配置来自 2C4G、4C8G 的功能记录和生产实例的实际占用，只针对个人使用；2C2G 两次限时诊断未达标；多客户端的一小时三轮持续负载还没测。见[容量证据](ARCHITECTURE.md#capacity-evidence)。
 - **交付：**在已推送的干净提交运行 `python -B ci/release-packages.py --help`，以该提交打五个工具包并生成摘要。各包独立解压，Windows 包用 1.1.0、Android 包用 0.71.2 的固定 Windows 原包做 `--verify-only`；按仓库根目录 `AGENTS.md` 的发布流程核对标签、GitHub 首页和制品。Android 覆盖升级沿用原签名密钥；厂商程序和签好成品不在工具包内。
 - **本地资料：**原包与测试签名位于 `inputs/`；2026-11-14 至 15 日的测试、基准数据和复验脚本在 `.cache/acceptance/receipts-20261115.zip`，内附逐项 `SHA256SUMS.txt`。访问资料、签名和归档均不随源码或 Release 分发。
