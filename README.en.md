@@ -52,7 +52,7 @@ The open-source project [ProkBot](https://gitee.com/ahaduoduoduo/ProkBot) moves 
 - **Works on your phone.** On iPhone and Android you can chat, get notifications and watch the Bot's computer.
 - **Works when you're out.** Direct LAN connection, built-in Tailcat networking (no public IP needed), or your own HTTPS domain.
 
-<a id="server-requirements"></a><a id="what-you-need-to-deploy"></a>
+<a id="what-you-need-to-deploy"></a>
 ## Server requirements
 
 The models run at your API provider, so **the server needs no GPU**. It only runs two Docker containers: the Host (the server program) and the Bot's Linux computer.
