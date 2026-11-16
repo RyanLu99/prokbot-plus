@@ -6,6 +6,13 @@ import { combineSignals, timeout } from './native.js';
 
 const FIRST_RETRY_MS = 500, MAX_RETRY_MS = 10000, STABLE_STREAM_MS = 30000;
 const COORDINATOR_VERSION = 3;
+// Replies and events that carry the address of a Bot computer.
+const DESKTOP_METHODS = new Set(['getForeverBoxStatus', 'ensureForeverBox', 'getSubagents']);
+
+export function desktopSlot(address) {
+  try { return /^\/vnc\/(desktop|fork)\//.exec(new URL(address, globalThis.location?.href).pathname)?.[1] ?? null; }
+  catch { return null; }
+}
 
 export async function readSse(body, consume) {
   const reader = body.getReader();
@@ -92,6 +99,20 @@ export function createGateway({ onUnauthorized, onConnected, onStateChanged } = 
   let state = 'connecting';
   const updateState = value => { if (state !== value) { state = value; onStateChanged?.(value); } };
   const closed = () => new Error(grokText('已退出连接，请重新连接。', 'Disconnected. Connect again.'));
+  // Each vncUrl holds a ticket that expires ten minutes after the Host issues it, but the
+  // renderer keeps the address from the last box status it read and on a phone builds the
+  // computer view only when it opens. Remember which Bot each desktop slot belongs to so
+  // the view can read a current ticket then.
+  const desktopOwners = new Map();
+  const noteDesktops = (value, owner) => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) { for (const item of value) noteDesktops(item, owner); return; }
+    const id = typeof value.agentId === 'string' ? value.agentId : owner;
+    for (const [key, item] of Object.entries(value)) {
+      if (key !== 'vncUrl') noteDesktops(item, id);
+      else if (typeof item === 'string' && typeof id === 'string' && desktopSlot(item)) desktopOwners.set(desktopSlot(item), id);
+    }
+  };
 
   async function request(endpoint, args, signal, method = 'POST') {
     if (lifetime.signal.aborted) throw closed();
@@ -121,7 +142,34 @@ export function createGateway({ onUnauthorized, onConnected, onStateChanged } = 
     if (method === 'resolveAgentCreation') return { kind: 'box' };
     if (method === 'restoreTemporalAgentRouting' || method === 'noteMountedAgent') return null;
     if (method === 'createAgent') { const { creationRoute, ...rest } = args ?? {}; args = rest; }
-    return request(`/api/${encodeURIComponent(method)}`, args, signal);
+    // Desktop 1.1.0 renamed global search and pages older results; the Host answers in one page.
+    if (method === 'searchMessages' || method === 'searchFiles') {
+      const matches = await request(`/api/${method === 'searchMessages' ? 'searchAgents' : 'searchMedia'}`, { query: args?.query }, signal);
+      return { matches, coverage: { kind: 'complete' } };
+    }
+    // The Host keeps no read receipts for transcripts and has no pending lessons to offer.
+    if (method === 'noteTranscriptOpened') return null;
+    if (method === 'takeTeachLearningPrompts') return [];
+    const value = await request(`/api/${encodeURIComponent(method)}`, args, signal);
+    if (DESKTOP_METHODS.has(method)) noteDesktops(value, args?.id);
+    return value;
+  }
+
+  /** A ticket for the desktop slot that is valid now, or null when the Bot computer is not running. */
+  async function desktopTicket(slot, signal) {
+    const id = desktopOwners.get(slot);
+    if (!id) return null;
+    const status = await request('/api/getForeverBoxStatus', { id }, signal);
+    const found = [];
+    const walk = value => {
+      if (!value || typeof value !== 'object') return;
+      for (const [key, item] of Object.entries(value)) {
+        if (key === 'vncUrl' && typeof item === 'string' && desktopSlot(item) === slot) found.push(item);
+        else walk(item);
+      }
+    };
+    walk(status);
+    return found.length ? new URL(found[0], globalThis.location?.href).searchParams.get('ticket') : null;
   }
 
   /** Serves the original coordinator protocol on a MessagePort from the renderer. */
@@ -143,6 +191,7 @@ export function createGateway({ onUnauthorized, onConnected, onStateChanged } = 
         subscribed = true;
         send({ kind: 'lifecycle', phase: 'ready', protocolVersion: COORDINATOR_VERSION });
         void subscribe('/events', ({ data }) => {
+          if (data.channel === 'forever-box') noteDesktops(data.payload);
           if (data.channel) emit(data.channel, data.payload);
         }, controller.signal, {
           requireEventStream: true,
@@ -199,7 +248,7 @@ export function createGateway({ onUnauthorized, onConnected, onStateChanged } = 
     return dispose;
   }
 
-  return { command, request, attach, getState: () => state,
+  return { command, request, attach, desktopTicket, getState: () => state,
     close: () => { lifetime.abort(); updateState('disconnected'); } };
 }
 
