@@ -14,9 +14,11 @@ import { writePrivate } from '../server/storage.mjs';
 import { decorateLocalSharingApi } from './sharing-import.mjs';
 import { installLocalPromptPolicy } from './prompt-runtime.mjs';
 import { summarizeAgent } from './host-summarize.mjs';
+import { installModelRejectionGuard } from './model-rejection-guard.mjs';
 
 const stateDir = process.env.GROKBOT_STATE_DIR ?? '/research/state';
 const originalDir = process.env.GROKBOT_ORIGINAL_HOST ?? '/research/original-host';
+installModelRejectionGuard();
 Object.assign(process.env, {
   SAND_DATA_ROOT: join(stateDir, 'host-data'),
   SAND_BACKEND_URL: 'http://127.0.0.1:9',
