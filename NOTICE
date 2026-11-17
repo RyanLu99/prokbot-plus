@@ -204,6 +204,12 @@ Subpath) with index, so backup and update work on Docker 29 with Compose 2.40
 body-parser) and the bundled mac/patchers/desktop/node_modules (@electron/asar
 4.3.2 with glob and minimatch).
 
+Responses tool-call validation (2026-11-15):
+`host/runtime/openai-responses.mjs` omits malformed historical function calls
+and their outputs during Responses replay, and rejects malformed new function
+calls before they are persisted. This prevents a provider's invalid function
+name from repeatedly breaking later turns.
+
 Third-party components
 ----------------------
 

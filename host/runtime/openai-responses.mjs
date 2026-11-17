@@ -7,6 +7,10 @@ import { explicitEffort, fileKind, fileText, mediaUrl, messageParts, ModelReques
 
 export const FORMAT = 'openai-responses';
 
+// Keep replay within the Responses provider's observed function-name limit.
+// Reject malformed model output before it reaches persisted conversation history.
+const validFunctionName = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
+
 export function responsesEndpoint(baseUrl) {
   const url = new URL(baseUrl);
   if (!['http:', 'https:'].includes(url.protocol)) throw new TypeError('baseUrl must use HTTP or HTTPS');
@@ -67,6 +71,7 @@ function replayableReasoning(part, model) {
 export function convertResponsesInput(messages, { model, replayReasoning = true, inlineToolImages = true } = {}) {
   const instructions = [], input = [];
   let leading = true, pendingImages = [];
+  const skippedToolCalls = new Set();
   const flushImages = () => {
     if (!pendingImages.length) return;
     input.push({ type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Screenshots from the preceding tool results:' }, ...pendingImages] });
@@ -100,6 +105,12 @@ export function convertResponsesInput(messages, { model, replayReasoning = true,
           if (previous?.type === 'message' && previous.phase === phase) previous.content += part.text;
           else items.push({ type: 'message', role: 'assistant', content: part.text, ...(phase ? { phase } : {}) });
         } else if (part.type === 'tool-call') {
+          // Older Host versions could persist a malformed upstream function name.
+          // Omit it and its result instead of replaying an API-invalid call forever.
+          if (!validFunctionName(part.toolName)) {
+            if (typeof part.toolCallId === 'string') skippedToolCalls.add(part.toolCallId);
+            continue;
+          }
           items.push({ type: 'function_call', call_id: part.toolCallId, name: part.toolName, arguments: textValue(part.args ?? {}) });
         }
       }
@@ -109,6 +120,7 @@ export function convertResponsesInput(messages, { model, replayReasoning = true,
     } else if (message.role === 'tool') {
       for (const part of parts) {
         if (part.type !== 'tool-result' || !part.toolCallId) throw new TypeError('Tool messages require tool-result parts and toolCallId');
+        if (skippedToolCalls.has(part.toolCallId)) continue;
         const extra = part.experimental_content ?? [];
         const text = part.result === undefined ? extra.filter(item => item.type === 'text').map(item => item.text).join('\n') : textValue(part.result);
         const images = extra.filter(item => item.type === 'image').map(item => ({ type: 'input_image', image_url: mediaUrl(item), detail: 'auto' }));
@@ -326,7 +338,7 @@ export async function* responsesTurn(context) {
     } else if (entry.type === 'message') {
       if (entry.text) content.push({ type: 'text', text: entry.text, ...(entry.phase ? { providerOptions: { grokbot: { phase: entry.phase } } } : {}) });
     } else if (entry.type === 'function_call') {
-      if (!entry.callId || !entry.name) throw new ModelRequestError('Incomplete model tool call identity');
+      if (!entry.callId || !validFunctionName(entry.name)) throw new ModelRequestError('Model response included an invalid function name');
       const call = { type: 'tool-call', toolCallId: entry.callId, toolName: entry.name, args: parseToolArguments(entry.name, entry.arguments) };
       // Output order is kept: each reasoning item must precede the output it led to on replay.
       calls.push(call); content.push(call);
