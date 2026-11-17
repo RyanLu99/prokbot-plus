@@ -215,11 +215,24 @@ test('legacy Jev configuration remains in the legacy format until an administrat
   const loaded = await loadModelConfig({ env: { GROKBOT_MODEL_ENV: join(directory, 'model.env'), GROKBOT_DATA_DIR: directory } });
   assert.equal(loaded.policy.mode, 'adaptive');
   assert.equal(loaded.jevApiKey, 'test-jev-key');
-  await assert.rejects(models.save(fixture()), { status: 409, message: /旧版按任务难度路由/ });
+  assert.equal((await models.publicConfig()).legacyAdaptiveRouting, true);
+  await assert.rejects(models.save(fixture()), { status: 409, message: /旧版模型配置/ });
   assert.equal(await readFile(join(directory, 'model.env'), 'utf8'), source);
   const migrated = await models.save({ ...fixture(), migrateLegacyRouting: true });
   assert.equal(migrated.routingMigrated, false);
+  assert.equal(migrated.legacyAdaptiveRouting, false);
   assert.match(await readFile(join(directory, 'model.env'), 'utf8'), /^GROKBOT_MODEL_ROUTING=/m);
+});
+
+test('a legacy single-model configuration is not reported as task-difficulty routing', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'model-routing-legacy-single-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const models = new Models(directory);
+  await models.save({ apiFormat: 'openai', baseUrl: 'https://legacy.example/v1', apiKey: 'test-legacy-key', model: 'legacy-model',
+    contextWindowTokens: 16_000, policy: defaultPolicy('legacy-model') });
+  const publicConfig = await models.publicConfig();
+  assert.equal(publicConfig.routingMigrated, true);
+  assert.equal(publicConfig.legacyAdaptiveRouting, false);
 });
 
 test('transient failures before output move to the next configured model', async () => {

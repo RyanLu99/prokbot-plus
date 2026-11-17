@@ -85,7 +85,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
   const providerEditor = editor(panel, 'model-provider-editor'), profileEditor = editor(panel, 'model-profile-editor');
   const botEditor = editor(panel, 'model-bot-route-editor');
   let config = emptyRouting(), pendingKeys = new Map(), loaded = false, dirty = false, active = false, agents = [],
-    agentSignature = '', legacyRouting = false;
+    agentSignature = '', legacyRouting = false, legacyAdaptive = false;
 
   function profileById(id) { return config.profiles.find(profile => profile.id === id); }
   function providerById(id) { return config.providers.find(provider => provider.id === id); }
@@ -140,6 +140,8 @@ export function createModelPage({ api, toast, busy, refresh }) {
   }
   function setConfig(value) {
     legacyRouting = value.routingMigrated === true;
+    // Only an adaptive policy used task-difficulty routing; a single model converts without loss.
+    legacyAdaptive = legacyRouting && value.legacyAdaptiveRouting === true;
     config = { version: 1, providers: (value.providers ?? []).map(provider => ({ ...provider })),
       profiles: (value.profiles ?? []).map(profile => ({ ...profile, efforts: [...(profile.efforts ?? [])] })),
       defaultRoute: null, botRoutes: clone(value.botRoutes ?? {}) };
@@ -149,9 +151,9 @@ export function createModelPage({ api, toast, busy, refresh }) {
     pendingKeys = new Map(); dirty = false; loaded = true; render();
     const notice = $('#legacy-routing-notice');
     notice.hidden = !legacyRouting;
-    notice.textContent = legacyRouting
+    notice.textContent = !legacyRouting ? '' : legacyAdaptive
       ? t('当前仍使用旧版按任务难度路由（Jev）。保存后会迁移为按 Bot 路由，并移除智能路由界面；如需保留旧配置，请不要保存。')
-      : '';
+      : t('当前是旧版单模型配置。保存后会转成服务和档案的格式，模型、API Key 和思考强度不变。');
     $('#model-apply-title').textContent = applyText(value);
   }
   function providerOptions(select, selected) {
@@ -435,13 +437,13 @@ export function createModelPage({ api, toast, busy, refresh }) {
   $('#refresh-routing').onclick = () => routingLog.load();
   form.onsubmit = event => { event.preventDefault(); $('#model-error').hidden = true; busy(event.submitter, async () => {
     try {
-      if (legacyRouting && !await confirmAction({
+      if (legacyAdaptive && !await confirmAction({
         title: t('迁移旧版模型路由？'),
         message: t('保存后会改为按 Bot 选择模型，旧版按任务难度路由和 Jev 选择将不再生效。'),
         action: t('迁移并保存'),
       })) return;
       const result = await api('/admin/api/model', { method: 'PUT', body: input() });
-      legacyRouting = false;
+      legacyRouting = false; legacyAdaptive = false;
       $('#legacy-routing-notice').hidden = true;
       setConfig(result); toast(t('配置已保存')); await refresh();
     } catch (error) { showError(error); }
@@ -459,6 +461,6 @@ export function createModelPage({ api, toast, busy, refresh }) {
       if (active) await routingLog.load();
     },
     reset() { config = emptyRouting(); pendingKeys = new Map(); loaded = false; dirty = false; active = false; agents = [];
-      agentSignature = ''; legacyRouting = false; $('#legacy-routing-notice').hidden = true; form.reset(); },
+      agentSignature = ''; legacyRouting = false; legacyAdaptive = false; $('#legacy-routing-notice').hidden = true; form.reset(); },
   };
 }

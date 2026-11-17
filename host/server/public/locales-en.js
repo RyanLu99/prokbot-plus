@@ -704,6 +704,8 @@ export default {
   "Bot 路由": "Bot routes",
   "模型路由记录": "Model routing log",
   "刷新 Bot": "Refresh Bots",
+  "当前是旧版单模型配置。保存后会转成服务和档案的格式，模型、API Key 和思考强度不变。": "This Host still uses the legacy single-model configuration. Saving converts it to services and profiles; the model, API key and thinking effort stay the same.",
+  "检测到旧版模型配置。请在模型页确认迁移后再保存。": "Legacy model configuration detected. Confirm the migration on the model page, then save.",
   "当前仍使用旧版按任务难度路由（Jev）。保存后会迁移为按 Bot 路由，并移除智能路由界面；如需保留旧配置，请不要保存。": "This Host still uses legacy task-difficulty routing (Jev). Saving migrates it to per-Bot routing and removes the smart-routing interface. Do not save if you need to keep the legacy configuration.",
   "迁移旧版模型路由？": "Migrate the legacy model routing?",
   "保存后会改为按 Bot 选择模型，旧版按任务难度路由和 Jev 选择将不再生效。": "Saving switches to per-Bot model selection. Legacy task-difficulty routing and Jev selection will stop applying.",

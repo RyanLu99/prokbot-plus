@@ -164,10 +164,11 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
   if (!FORMATS[apiFormat]) throw new TypeError(`apiFormat must be one of ${API_FORMATS.join(', ')}`);
   // Adaptive routing may select models with different parameter and replay support.
   const adaptations = new Map();
-  // Once a fallback accepts a call in a tool loop, keep using it for the rest
-  // of that executor. Returning to a primary that expects its own signed
-  // thinking would make the next step invalid when the fallback stripped it.
-  const preferredCandidates = new Map();
+  // Once a fallback accepts a call, keep using it for the rest of this session.
+  // The Harness opens a session per turn, so the next turn tries the primary
+  // again. Returning to a primary that expects its own signed thinking within
+  // the tool loop would make the next step invalid when the fallback stripped it.
+  let preferredKey;
   const defaults = { baseUrl, apiKey, apiFormat, model, requestOptions, contextWindowTokens,
     summaryThresholdTokens, profileId, providerId, efforts };
   const effortsFor = id => policy?.models?.find(entry => entry.id === id)?.efforts;
@@ -238,7 +239,6 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
           const requested = requestCandidate(selected, defaults);
           const configured = [requested,
             ...((selected?.fallbacks ?? []).map(candidate => requestCandidate(candidate, defaults)))];
-          const preferredKey = preferredCandidates.get(this);
           const preferredIndex = preferredKey ? configured.findIndex(candidate => candidateKey(candidate) === preferredKey) : -1;
           const ordered = preferredIndex > 0
             ? [configured[preferredIndex], ...configured.filter((_, index) => index !== preferredIndex)]
@@ -319,7 +319,7 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
               } catch (logError) {
                 console.warn(`[model-session] Unable to record model fallback: ${logError.code ?? logError.name}`);
               }
-              preferredCandidates.set(this, candidateKey(next));
+              preferredKey = candidateKey(next);
               controller.signal.throwIfAborted();
             } finally {
               if (activeIterator) {

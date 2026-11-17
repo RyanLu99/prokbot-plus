@@ -65,11 +65,12 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-18)
      fallback, connection test and auto review for all three formats.
    - Provider/model/format-scoped reasoning replay, ordered primary/backup
      routing with upstream-I/O idle deadlines and explicit quota exhaustion
-     classification, linear large-event SSE parsing and restartable client
+     classification, incremental large-event SSE parsing and restartable client
      stream subscriptions. A backup sharing a key is skipped only when the
      provider explicitly reports quota exhaustion; ordinary 503, timeout and
      network failures may still try that backup.
-   - Per-Bot model routes and profiles (host/runtime/model-routing.mjs), the
+   - Per-Bot model routes and profiles (host/runtime/model-routing.mjs, contributed
+     through pull request #2), the
      rewritten model page, guarded manual summarization (host-summarize.mjs),
      threshold compaction, and rejection of malformed provider function names
      (model-rejection-guard.mjs). The Harness turn-run recipe injects the Bot ID

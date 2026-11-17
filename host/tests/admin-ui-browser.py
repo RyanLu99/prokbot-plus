@@ -45,9 +45,10 @@ class AdminUI(unittest.TestCase):
                 args=['--disable-background-networking'])
         cls.addClassCleanup(cls.browser.close)
 
-    def start(self, view='overview', *, mobile=False, locale='en-US', initial='ready', authenticated=True, demo_bot=False):
+    def start(self, view='overview', *, mobile=False, locale='en-US', initial='ready', authenticated=True, demo_bot=False,
+              legacy=None):
         self.mode, self.authenticated, self.reply = initial, authenticated, 'ok'
-        self.demo_bot = demo_bot
+        self.demo_bot, self.legacy, self.saved = demo_bot, legacy, None
         self.requests, self.unexpected = [], []
         viewport = {'width': 390, 'height': 844} if mobile else {'width': 1440, 'height': 940} if view == 'model' else {'width': 1280, 'height': 900}
         context = self.browser.new_context(locale=locale, timezone_id='UTC',
@@ -109,7 +110,11 @@ class AdminUI(unittest.TestCase):
                         if configured and self.demo_bot else {},
             'model': 'demo-model' if configured else '',
             'configured': configured, 'reload': {'status': 'applied'}, 'hasApiKey': configured,
+            'routingMigrated': self.legacy is not None, 'legacyAdaptiveRouting': self.legacy == 'adaptive',
         }
+        if key == 'model' and req.method == 'PUT':
+            self.saved, self.legacy = req.post_data_json, None
+            model.update(routingMigrated=False, legacyAdaptiveRouting=False)
         fixtures = {'status': {'model': model, 'devices': [], 'pairingKeys': [], 'notifications': {},
                 'publicUrl': 'https://demo.example.invalid',
                 'host': {'connected': self.mode == 'ready', 'busy': False,
@@ -301,6 +306,21 @@ class AdminUI(unittest.TestCase):
         expect(page.locator('#model-bot-routes')).to_contain_text('Research Bot')
         expect(page.locator('#model-bot-routes')).to_contain_text('Backup profile')
         self.capture('admin-model')
+
+    def test_legacy_model_migration_mentions_jev_only_for_adaptive_routing(self):
+        for legacy in ('single', 'adaptive'):
+            with self.subTest(legacy=legacy):
+                page = self.start(view='model', legacy=legacy)
+                notice = page.locator('#legacy-routing-notice')
+                expect(notice).to_be_visible()
+                self.assertEqual('Jev' in notice.inner_text(), legacy == 'adaptive')
+                page.locator('#model-form button[type=submit]').click()
+                if legacy == 'adaptive':
+                    confirm = page.locator('#confirm-dialog')
+                    expect(confirm).to_contain_text('Jev')
+                    confirm.locator('#confirm-accept').click()
+                expect(notice).to_be_hidden()
+                self.assertIs(self.saved.get('migrateLegacyRouting'), True)
 
     def test_chinese_setup_copy(self):
         page = self.start(initial='unconfigured', locale='zh-CN')

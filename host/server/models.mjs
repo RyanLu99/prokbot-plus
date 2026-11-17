@@ -79,6 +79,7 @@ export class Models {
     try { primary = modelRouteForAgent(parsed.config); }
     catch { primary = undefined; }
     return { ...legacy, routing: parsed.config, routingMigrated: parsed.migrated,
+      legacyAdaptiveRouting: parsed.migrated && legacy.policy?.mode === 'adaptive',
       ...(primary ? { baseUrl: primary.baseUrl, apiKey: primary.apiKey, apiFormat: primary.apiFormat,
         model: primary.model, contextWindowTokens: primary.contextWindowTokens, policy: compatibilityPolicy(primary) } : {}) };
   }
@@ -140,7 +141,7 @@ export class Models {
     const multiProvider = Array.isArray(input.providers) || own(input, 'defaultRoute') || input.version === 1;
     if (!multiProvider) return this.legacyRouting(input, previous);
     check(!previous.routingMigrated || input.migrateLegacyRouting === true, 409,
-      '检测到旧版按任务难度路由。请先确认迁移到按 Bot 路由，再保存。');
+      '检测到旧版模型配置。请在模型页确认迁移后再保存。');
     let routing;
     try { routing = validateModelRouting(input, { previous: previous.routing }); }
     catch (error) { check(false, 400, publicError(error)); }
