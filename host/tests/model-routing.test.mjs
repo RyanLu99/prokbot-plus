@@ -77,7 +77,7 @@ test('legacy single-provider configuration remains editable as a direct default 
   assert.equal(legacyModelRouting({}).providers.length, 0);
 });
 
-test('catalog context policies use provider metadata, the Terra reference, then the new-profile default', () => {
+test('catalog context policies use provider metadata, the Terra reference, then no assumed capacity', () => {
   assert.deepEqual(catalogContextPolicy('provider-model', 128_000), {
     contextWindowTokens: 128_000, summaryThresholdTokens: 96_000, contextSource: 'provider',
   });
@@ -85,11 +85,11 @@ test('catalog context policies use provider metadata, the Terra reference, then 
     contextWindowTokens: 258_000, summaryThresholdTokens: 192_000, contextSource: 'reference',
   });
   assert.deepEqual(catalogContextPolicy('unpublished-model'), {
-    contextWindowTokens: 258_000, summaryThresholdTokens: 192_000, contextSource: 'fallback',
+    contextWindowTokens: 0, summaryThresholdTokens: 0, contextSource: 'unknown',
   });
 });
 
-test('new profiles receive the default compaction policy without overriding explicit opt-out', () => {
+test('new profiles do not assume a compaction policy without provider metadata', () => {
   const input = fixture();
   input.profiles = [{ id: 'new', name: 'New', providerId: 'primary', model: 'new-model', efforts: [] },
     { id: 'disabled', name: 'Disabled', providerId: 'primary', model: 'disabled-model', efforts: [],
@@ -97,8 +97,8 @@ test('new profiles receive the default compaction policy without overriding expl
   input.defaultRoute = { profileId: 'new', effort: 'default', fallbacks: [] };
   input.botRoutes = {};
   const profiles = new Map(validateModelRouting(input).profiles.map(profile => [profile.id, profile]));
-  assert.deepEqual(profiles.get('new').contextWindowTokens, 258_000);
-  assert.deepEqual(profiles.get('new').summaryThresholdTokens, 192_000);
+  assert.deepEqual(profiles.get('new').contextWindowTokens, 0);
+  assert.deepEqual(profiles.get('new').summaryThresholdTokens, 0);
   assert.deepEqual(profiles.get('disabled').contextWindowTokens, 0);
   assert.deepEqual(profiles.get('disabled').summaryThresholdTokens, 0);
 });

@@ -63,6 +63,10 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-16)
      public/model.js, public/locales-en.js (changed).
    - "minimal" reasoning effort, reasoning provenance tags, optional-parameter
      fallback, connection test and auto review for all three formats.
+   - Provider/model/format-scoped reasoning replay, independent-credential
+     primary/backup routing with upstream-I/O idle deadlines, explicit quota
+     exhaustion classification, bounded SSE compatibility parsing and a
+     reliability patch for the original tool-stream executor.
 
 3. Auto review: retry once on a malformed classification and log failures
    (host/runtime/host-auto-review.mjs).

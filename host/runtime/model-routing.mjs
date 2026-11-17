@@ -1,7 +1,7 @@
 // Versioned model-provider configuration and deterministic Bot route resolution.
 // Credentials stay in model.env; callers of publicModelRouting never receive them.
 import { validateContextPolicy } from './context-policy.mjs';
-import { DEFAULT_CONTEXT_WINDOW_TOKENS, DEFAULT_SUMMARY_THRESHOLD_TOKENS, EFFORTS, effortLevels } from './model-policy.mjs';
+import { EFFORTS, effortLevels } from './model-policy.mjs';
 
 export const API_FORMATS = Object.freeze(['openai', 'openai-responses', 'anthropic']);
 export const MODEL_ROUTING_ENV = 'GROKBOT_MODEL_ROUTING';
@@ -59,10 +59,9 @@ function profileContext(value) {
 function contextForProfile(value, previous) {
   const hasContext = Object.prototype.hasOwnProperty.call(value, 'contextWindowTokens');
   const hasThreshold = Object.prototype.hasOwnProperty.call(value, 'summaryThresholdTokens');
-  const defaults = previous ?? (!hasContext && !hasThreshold ? {
-    contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
-    summaryThresholdTokens: DEFAULT_SUMMARY_THRESHOLD_TOKENS,
-  } : {});
+  // A provider catalog is optional. Never invent a capacity: it would make the
+  // Harness defer compaction past the actual context limit of an unknown model.
+  const defaults = previous ?? {};
   return profileContext({
     contextWindowTokens: hasContext ? value.contextWindowTokens : (defaults.contextWindowTokens ?? 0),
     summaryThresholdTokens: hasThreshold ? value.summaryThresholdTokens : (defaults.summaryThresholdTokens ?? 0),

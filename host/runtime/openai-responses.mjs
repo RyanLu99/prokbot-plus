@@ -51,9 +51,10 @@ function userContent(part) {
 }
 
 /** Encrypted reasoning is readable only by the model that produced it. */
-function replayableReasoning(part, model) {
+function replayableReasoning(part, model, providerId) {
   const origin = reasoningOrigin(part);
   if (origin.model !== model) return null;
+  if (origin.providerId && providerId && origin.providerId !== providerId) return null;
   if (part.type === 'reasoning') {
     if (!part.signature || !(origin.format === FORMAT || (!origin.format && origin.summarized))) return null;
     return { type: 'reasoning', ...(origin.itemId ? { id: origin.itemId } : {}),
@@ -68,7 +69,7 @@ function replayableReasoning(part, model) {
 }
 
 /** CoreMessages to Responses input items and instructions. */
-export function convertResponsesInput(messages, { model, replayReasoning = true, inlineToolImages = true } = {}) {
+export function convertResponsesInput(messages, { model, providerId, replayReasoning = true, inlineToolImages = true } = {}) {
   const instructions = [], input = [];
   let leading = true, pendingImages = [];
   const skippedToolCalls = new Set();
@@ -96,7 +97,7 @@ export function convertResponsesInput(messages, { model, replayReasoning = true,
       const items = [];
       for (const part of parts) {
         if (part.type === 'reasoning' || part.type === 'redacted-reasoning') {
-          const item = replayReasoning ? replayableReasoning(part, model) : null;
+          const item = replayReasoning ? replayableReasoning(part, model, providerId) : null;
           if (item) { items.push(item); replayed++; }
         } else if (part.type === 'text') {
           if (!part.text) continue;
@@ -170,7 +171,7 @@ function incomplete(reason) {
 /** One streamed Responses turn; yields Harness stream parts, returns the assembled message. */
 export async function* responsesTurn(context) {
   const { fetchImpl, endpoint, apiKey, headers, model, messages, tools, effort, efforts, maxTokens, signal, waitForIO, state,
-    notifyRequest, onModel, onId, onUsage } = context;
+    providerId, notifyRequest, onModel, onId, onUsage } = context;
   const functions = convertResponsesTools(tools);
   let replayed = 0, inlineImages = false;
   const { http } = await postWithFallback({ fetchImpl, url: endpoint, apiKey, signal, waitForIO, state, optional: OPTIONAL,
@@ -187,7 +188,7 @@ export async function* responsesTurn(context) {
         apply: () => { state.toolImagesAsMessage = true; } },
     ],
     build: () => {
-      const converted = convertResponsesInput(messages, { model, replayReasoning: !state.stripReasoning,
+      const converted = convertResponsesInput(messages, { model, providerId, replayReasoning: !state.stripReasoning,
         inlineToolImages: !state.toolImagesAsMessage });
       replayed = converted.replayed;
       inlineImages = converted.input.some(item => item.type === 'function_call_output' && Array.isArray(item.output));
@@ -210,7 +211,7 @@ export async function* responsesTurn(context) {
     return entry;
   };
   const reasoningOptions = (entry, summarized) => ({
-    providerOptions: reasoningProviderOptions({ format: FORMAT, model: responseModel, summarized, itemId: entry.id }) });
+    providerOptions: reasoningProviderOptions({ format: FORMAT, model: responseModel, providerId, summarized, itemId: entry.id }) });
   const start = response => {
     if (id && response?.id && response.id !== id) throw new ModelRequestError('Conflicting model response ID');
     if (response?.id && response.id !== id) { id = response.id; onId(id); notifyRequest(id); }
@@ -344,6 +345,6 @@ export async function* responsesTurn(context) {
       calls.push(call); content.push(call);
     }
   }
-  yield* streamToolCalls(calls, messages);
+  yield* streamToolCalls(calls, messages, signal);
   return { id, model: responseModel, content, toolCalls: calls.length, usage: responsesUsage(rawUsage) };
 }

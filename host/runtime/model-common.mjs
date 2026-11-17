@@ -82,44 +82,74 @@ export async function* readSse(body, { waitForIO = direct, maxEventChars = MAX_E
   if (!body) throw new ModelRequestError('Model response has no body');
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  let line = '', data = [], buffered = 0, skipLF = false;
+  let pending = '', data = [], buffered = 0;
   function append(fragment) {
-    if (buffered + line.length + fragment.length > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
-    line += fragment;
+    pending += fragment;
   }
-  function accept() {
+  function accept(line) {
     if (line === '') {
       const event = data.length ? data.join('\n') : undefined;
       data = []; buffered = 0;
       return event;
     }
     if (line === 'data' || line.startsWith('data:')) {
+      if (buffered + line.length + 1 > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
       data.push(line.slice(line[5] === ' ' ? 6 : 5));
       buffered += line.length + 1;
     }
-    line = '';
     return undefined;
   }
+  const completeJsonEnd = (source, start) => {
+    if (!['{', '['].includes(source[start])) return undefined;
+    let depth = 0, quoted = false, escaped = false;
+    for (let index = start; index < source.length; index++) {
+      const character = source[index];
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '"') quoted = false;
+      } else if (character === '"') quoted = true;
+      else if (character === '{' || character === '[') depth++;
+      else if ((character === '}' || character === ']') && --depth === 0) return index + 1;
+    }
+    return undefined;
+  };
+  const gluedData = () => {
+    const events = [];
+    // Some compatible gateways omit blank lines between data frames. Split only
+    // complete JSON values, never a literal "data:" embedded in model text.
+    while (pending.startsWith('data:')) {
+      let start = 5;
+      while (pending[start] === ' ' || pending[start] === '\t') start++;
+      if (pending.startsWith('[DONE]', start)) {
+        events.push('[DONE]'); pending = pending.slice(start + '[DONE]'.length); continue;
+      }
+      const end = completeJsonEnd(pending, start);
+      if (end === undefined) break;
+      events.push(pending.slice(start, end)); pending = pending.slice(end);
+    }
+    return events;
+  };
   try {
     while (true) {
       const { value, done } = await waitForIO(() => reader.read());
-      // EOF is not a blank line. In particular, never manufacture a terminal event at EOF.
-      if (done) { decoder.decode(); break; }
-      const chunk = decoder.decode(value, { stream: true });
-      if (!chunk) continue;
-      let start = skipLF && chunk[0] === '\n' ? 1 : 0;
-      skipLF = false;
-      const breaks = /\r\n|[\r\n]/g;
-      breaks.lastIndex = start;
+      append(done ? decoder.decode() : decoder.decode(value, { stream: true }));
+      const breaks = /\r\n|\r|\n/g;
       let match;
-      while ((match = breaks.exec(chunk))) {
-        append(chunk.slice(start, match.index));
-        start = breaks.lastIndex;
-        skipLF = start === chunk.length && match[0] === '\r';
-        const event = accept();
+      while ((match = breaks.exec(pending))) {
+        // Keep a trailing CR until the next read identifies whether it is CRLF.
+        if (!done && match[0] === '\r' && match.index === pending.length - 1) break;
+        const line = pending.slice(0, match.index);
+        pending = pending.slice(match.index + match[0].length);
+        const event = accept(line);
         if (event !== undefined) yield event;
+        breaks.lastIndex = 0;
       }
-      append(chunk.slice(start));
+      for (const event of gluedData()) yield event;
+      if (pending.length > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
+      // EOF alone is not an SSE separator. Only the explicitly supported glued
+      // frame form above may complete without a normal blank line.
+      if (done) break;
     }
   } finally {
     await reader.cancel().catch(() => {});
@@ -199,15 +229,15 @@ export function explicitEffort(effort) {
  * original Harness convention (it summarizes and replays by modelName); grokbot.* lets
  * each format replay only reasoning it can read.
  */
-export function reasoningProviderOptions({ format, model, summarized = false, itemId, emptyThinking = false }) {
+export function reasoningProviderOptions({ format, model, providerId, summarized = false, itemId, emptyThinking = false }) {
   return { cursor: { modelName: model, ...(summarized ? { isAlreadySummarizedThinking: true } : {}) },
-    grokbot: { format, model, ...(itemId ? { itemId } : {}), ...(emptyThinking ? { emptyThinking: true } : {}) } };
+    grokbot: { format, model, ...(providerId ? { providerId } : {}), ...(itemId ? { itemId } : {}), ...(emptyThinking ? { emptyThinking: true } : {}) } };
 }
 
 export function reasoningOrigin(part) {
   const own = part.providerOptions?.grokbot ?? part.experimental_providerMetadata?.grokbot;
   const cursor = part.providerOptions?.cursor ?? part.experimental_providerMetadata?.cursor;
-  return { format: own?.format, model: own?.model ?? cursor?.modelName, itemId: own?.itemId,
+  return { format: own?.format, model: own?.model ?? cursor?.modelName, providerId: own?.providerId, itemId: own?.itemId,
     summarized: cursor?.isAlreadySummarizedThinking === true, phase: own?.phase, emptyThinking: own?.emptyThinking === true };
 }
 
@@ -290,7 +320,7 @@ function isRepeatedDelivery(calls, messages) {
     Boolean(sent[0].toolCallId) && parts[0].toolCallId === sent[0].toolCallId && receipt.id === sent[0].toolCallId;
 }
 
-export function* streamToolCalls(calls, messages) {
+export function* streamToolCalls(calls, messages, signal) {
   if (new Set(calls.map(call => call.toolCallId)).size !== calls.length) throw new ModelRequestError('Duplicate model tool call ID');
   if (isRepeatedDelivery(calls, messages)) {
     throw new ModelRequestError('The model requested the same text that was already delivered. Stopped this turn before sending it again.',
@@ -298,6 +328,10 @@ export function* streamToolCalls(calls, messages) {
   }
   const discard = recordToolCallOrder(calls);
   let handedOff = 0;
+  const discardUnhanded = () => {
+    for (let i = handedOff; i < calls.length; i++) discard(calls[i].toolCallId);
+  };
+  signal?.addEventListener('abort', discardUnhanded, { once: true });
   try {
     for (const call of calls) {
       // The Harness consumes one argument stream at a time; serialize parallel calls.
@@ -308,7 +342,8 @@ export function* streamToolCalls(calls, messages) {
     }
   } finally {
     // Already delivered calls still need their ordering entries until journal execution.
-    for (let i = handedOff; i < calls.length; i++) discard(calls[i].toolCallId);
+    signal?.removeEventListener('abort', discardUnhanded);
+    discardUnhanded();
   }
 }
 

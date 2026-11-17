@@ -6,9 +6,9 @@ export const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'ma
 export const DEFAULT_CONTEXT_WINDOW_TOKENS = 258_000;
 export const DEFAULT_SUMMARY_THRESHOLD_TOKENS = 192_000;
 
-// Some compatible APIs omit capacity metadata from /models. Keep a small,
-// explicit reference list and a usable default so a new profile has a
-// compaction policy before the provider catalog can describe it.
+// Some compatible APIs omit capacity metadata from /models. Keep only verified
+// references: assuming a large capacity for an unknown model delays compaction
+// until the upstream rejects the conversation.
 const REFERENCE_CONTEXT_POLICIES = [
   { match: /^gpt-5\.6-terra$/i, contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
     summaryThresholdTokens: DEFAULT_SUMMARY_THRESHOLD_TOKENS },
@@ -30,8 +30,7 @@ export function catalogContextPolicy(model, reportedCapacity) {
   const reference = REFERENCE_CONTEXT_POLICIES.find(entry => entry.match.test(String(model)));
   if (reference) return { contextWindowTokens: reference.contextWindowTokens,
     summaryThresholdTokens: reference.summaryThresholdTokens, contextSource: 'reference' };
-  return { contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
-    summaryThresholdTokens: DEFAULT_SUMMARY_THRESHOLD_TOKENS, contextSource: 'fallback' };
+  return { contextWindowTokens: 0, summaryThresholdTokens: 0, contextSource: 'unknown' };
 }
 
 /** Reference levels for well-known model families; a provider catalog overrides them. */
