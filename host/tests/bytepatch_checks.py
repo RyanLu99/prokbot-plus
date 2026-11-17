@@ -1,5 +1,7 @@
 import hashlib
 import io
+import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -8,6 +10,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'release'))
 import bytepatch
+
+PATCH_HOST = Path(__file__).resolve().parents[1] / 'release' / 'patch-host.py'
+PATCH_HOST_SPEC = importlib.util.spec_from_file_location('patch_host', PATCH_HOST)
+patch_host = importlib.util.module_from_spec(PATCH_HOST_SPEC)
+PATCH_HOST_SPEC.loader.exec_module(patch_host)
 
 
 class PinnedPatchTests(unittest.TestCase):
@@ -44,6 +51,22 @@ class PinnedPatchTests(unittest.TestCase):
             path.write_bytes(data)
             with patch.object(Path, 'read_bytes', side_effect=AssertionError('unbounded file read')):
                 self.assertEqual(bytepatch.file_digest(path), hashlib.sha256(data).hexdigest())
+
+    def test_reliability_manifest_checks_generated_file_digests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp) / 'release-reliability'
+            directory.mkdir()
+            content = b'prepared output'
+            (directory / 'module.mjs').write_bytes(content)
+            manifest = {
+                'digest': 'a' * 64,
+                'files': [{'name': 'module.mjs', 'sha256': hashlib.sha256(content).hexdigest()}],
+            }
+            (directory / 'manifest.json').write_text(json.dumps(manifest))
+            patch_host.verify_reliability_manifest(Path(tmp))
+            (directory / 'module.mjs').write_bytes(b'changed output')
+            with self.assertRaisesRegex(ValueError, 'Prepared reliability manifest mismatch: module.mjs'):
+                patch_host.verify_reliability_manifest(Path(tmp))
 
 
 if __name__ == '__main__':

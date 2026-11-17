@@ -67,6 +67,9 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-16)
      primary/backup routing with upstream-I/O idle deadlines, explicit quota
      exhaustion classification, bounded SSE compatibility parsing and a
      reliability patch for the original tool-stream executor.
+   - The Host patch build verifies each prepared reliability file against its
+     protected manifest before it creates an image; the executor repair updates
+     both the generated file and its manifest hash.
 
 3. Auto review: retry once on a malformed classification and log failures
    (host/runtime/host-auto-review.mjs).
