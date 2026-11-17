@@ -8,6 +8,7 @@ import { startLocalAutoReview } from './host-auto-review.mjs';
 import { localTemplates } from './host-local-profile.mjs';
 import { createModelRouter } from './model-router.mjs';
 import { recordUsage } from './usage-ledger.mjs';
+import { recordRouting } from './routing-log.mjs';
 import { transcribeLocalAudio } from './host-speech.mjs';
 import { createLocalCapabilities, startLocalMemory } from './host-capabilities.mjs';
 import { contextPolicyFor } from './context-policy.mjs';
@@ -15,6 +16,7 @@ import { startLocalManagedSkills } from './host-skills.mjs';
 import { startLocalWebhooks } from './host-webhooks.mjs';
 import { startLocalFederation } from './host-federation.mjs';
 import { createLocalServiceRuntime } from './media-runtime.mjs';
+import { modelRouteForAgent } from './model-routing.mjs';
 
 const unsubscribe = () => () => {};
 export function unavailable(capability) {
@@ -49,6 +51,11 @@ function localIdentity() {
   };
 }
 
+function inferenceAgentId(options) {
+  const id = options?.agentId ?? options?.getAgentId?.() ?? options?.agentStore?.getId?.();
+  return typeof id === 'string' && id ? id : undefined;
+}
+
 function inference(config, library, services) {
   return {
     isReady: async () => true,
@@ -58,11 +65,20 @@ function inference(config, library, services) {
       videoAnalysisEnabled: services.videoAnalysisEnabled,
       createSession: (onRequestId, options) => ['watchVideo', 'videoReview'].includes(options?.localMediaKind) && services.videoAnalysisEnabled(options.localMediaKind)
         ? services.createVideoSession(options.localMediaKind, onRequestId)
-        : createModelSession({ ...config, ...contextPolicyFor(config, config.model), onRequestId,
-        selectRequest: createModelRouter(options?.isSummarizationSession && config.policy ? { ...config, policy: { ...config.policy, mode: 'manual' } } : config, { onDecision: decision => console.info('[model-router]', JSON.stringify(decision)) }),
-        onUsage: usage => recordUsage(config.usageDirectory, { ...usage, kind: options?.isSummarizationSession ? 'summary' : 'chat' }),
-        fetchImpl: observeModelFetch(globalThis.fetch, options),
-        mapError: createHarnessModelErrorMapper(library) }),
+        : (() => {
+          const agentId = inferenceAgentId(options);
+          const route = config.modelRouting ? modelRouteForAgent(config.modelRouting, agentId) : undefined;
+          const sessionConfig = route ? { ...config, ...route } : { ...config, ...contextPolicyFor(config, config.model) };
+          const routerConfig = !config.modelRouting && options?.isSummarizationSession && config.policy
+            ? { ...config, policy: { ...config.policy, mode: 'manual' } } : config;
+          return createModelSession({ ...sessionConfig, onRequestId,
+            selectRequest: createModelRouter(routerConfig, { agentId, onDecision: decision => console.info('[model-router]', JSON.stringify(decision)) }),
+            onFallback: event => recordRouting(config.routingDirectory, { kind: 'model-fallback', status: 'fallback', agentId,
+              session: options?.isSummarizationSession ? 'summary' : 'chat', ...event }),
+            onUsage: usage => recordUsage(config.usageDirectory, { ...usage, kind: options?.isSummarizationSession ? 'summary' : 'chat' }),
+            fetchImpl: observeModelFetch(globalThis.fetch, options),
+            mapError: createHarnessModelErrorMapper(library) });
+        })(),
       // These are official analytics endpoints, disabled with Host telemetry.
       recordPostTurnLabeling() {}, recordFollowupLabeling() {},
     },

@@ -62,7 +62,7 @@ python3 host/deploy.py status < /dev/null
 ## Connect and verify
 
 1. Run `python3 host/deploy.py setup-key` in a private terminal; do not forward the output to chat. Use it in the console to set a 12–128 character admin password. This first-use code is not a device pairing code.
-2. For a split deployment, connect the execution node in the console first. In Models, enter the endpoint, model ID and API key. OpenAI Chat and Responses normally use a `/v1` base; Anthropic Messages accepts the root. Match the provider's actual API. Test before saving and wait for the Host to connect. Search, image generation, voice and push are optional.
+2. For a split deployment, connect the execution node in the console first. In Models, add each model service first (API format, endpoint, and key), then create profiles that bind a service and model ID. OpenAI Chat and Responses normally use a `/v1` base; Anthropic Messages accepts the root. Match the provider's actual API. After setting a default route, individual Bots can override the primary model, reasoning effort, and ordered backups without a Jev key. Test each profile before saving and wait for the Host to connect; backups are used only before the primary has emitted output, for a timeout, network error, 408, 429, or 5xx. Search, image generation, voice and push are optional.
 3. Generate a six-character, single-use pairing code in the console (valid for five minutes). Enter the same address as `GROKBOT_PUBLIC_URL` and the code in the client. Pair each device separately. Android needs a private network address or HTTPS; it does not support Tailcat links.
 
 <a id="client-packages"></a>
