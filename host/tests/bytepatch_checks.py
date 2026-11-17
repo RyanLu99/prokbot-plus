@@ -74,6 +74,7 @@ class PinnedPatchTests(unittest.TestCase):
                                 'release-reliability__engine-tool-stream-executor.mjs.gbp.gz')
         additions = b''.join(base64.b64decode(operation[1]) for operation in recipe['ops'] if operation[0] == 'add')
         self.assertIn(b'await Promise.allSettled([stream1.throw(e), stream22.close()]', additions)
+        self.assertIn(b'.catch(() => interactionHandler.invocationId)', additions)
 
 
 if __name__ == '__main__':
