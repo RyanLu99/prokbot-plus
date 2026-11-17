@@ -4,10 +4,11 @@
 
 ## 从哪里接手
 
-交接基线：2026-11-16。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.3.0..main` 和 `git status --short` 核对。
+交接基线：2026-11-16。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.3.1..main` 和 `git status --short` 核对。
 
 | 层级 | 内容 |
 | --- | --- |
+| Plus Release `v1.3.1` | Host 部署工具修复（[#4](https://github.com/ferretgeek/prokbot-plus/issues/4)）：`host/release/backup.py` 用 `index` 读取 `docker inspect` 原始 JSON 中可能省略的键，Docker 29 + Compose 2.40 上的 `backup` 和 `update` 恢复正常。其余与 `v1.3.0` 相同。 |
 | Plus Release `v1.3.0` | 推荐用最新版、用不了再回退：Windows 默认 1.1.0，`--version 0.71.2` 或 0.71.2 安装包生成回退版（`windows/patchers/desktop/inputs.mjs` 按大小和 SHA-256 识别版本）；Android 界面默认取自 Windows 1.1.0，`android/patchers/supported.json` 的 `fallback` 保留 0.71.2，`renderer-patches.mjs` 按版本分开。Android 桥接补上 1.1.0 的听写、启动默认值、电脑画面票据刷新、`insertCSS`、`moveBefore` 兼容和对话框排版。Host 与 `v1.2.1` 相同。 |
 | Plus Release `v1.2.1` | Android 旧版 WebView 兼容：`android/client/compat.js` 补齐官方界面直接调用的较新函数，页面没有启动时显示说明（[#3](https://github.com/ferretgeek/prokbot-plus/issues/3)）。其余与 `v1.2.0` 相同。 |
 | Plus Release `v1.2.0` | 五个平台工具 ZIP 和 `SHA256SUMS.txt`。Windows 补丁接受官方 1.1.0：`windows/tools/desktop-recipes/` 生成 recipe，`mac/clients/desktop/` 增加按边注册、听写、搜索转接等 1.1.0 接口；0.71.2 输入移到 `windows/patchers/desktop/0.71.2/` 供 Android 使用。Host：`host/deploy.py`、`host/release/` 的备份、镜像识别和恢复；`host/runtime/` 的三种模型协议、流式响应和工具顺序；`host/server/`、`host/tools/host-admin.mjs` 的管理页和 CLI；`host/bench/` 容量测量。 |

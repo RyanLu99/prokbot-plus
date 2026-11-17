@@ -4,6 +4,15 @@
 
 Versions start at ProkBot Plus 1.0.0. Upstream ProkBot releases are listed at the end for reference.
 
+## ProkBot Plus 1.3.1 (2026-11-17)
+
+Host 部署工具修复：在 Docker 29 + Compose 2.40 上，`deploy.py backup` 和 `deploy.py update` 无法运行（[#4](https://github.com/ferretgeek/prokbot-plus/issues/4)）。客户端与 1.3.0 相同，不用重新生成。
+
+Host deployment tool fix: on Docker 29 with Compose 2.40, `deploy.py backup` and `deploy.py update` could not run ([#4](https://github.com/ferretgeek/prokbot-plus/issues/4)). The clients are the same as in 1.3.0 and need no rebuild.
+
+- **备份与升级 / Backup and update**：备份和升级前读取容器信息时报 `map has no entry for key "Mounts"`，在停机前中止，服务不受影响，但无法备份或升级。原因是 `docker inspect` 的模板因 `.Id` 改读原始 JSON，而原始 JSON 会省略空字段：Compose 2.40 用 Binds 挂载具名卷时没有 `HostConfig.Mounts`，不带选项的 `--mount` 没有 `VolumeOptions`。`host/release/backup.py` 现在用 `index` 读取这几个可能缺失的键，仍然只取用了子目录挂载的目标路径，用卷的子目录冒充整个数据卷的容器照样被拒绝。Reading container details before a backup or update failed with `map has no entry for key "Mounts"` and stopped before any service was stopped, so services kept running but nothing could be backed up or upgraded. `.Id` makes `docker inspect` run the template on the raw JSON, which omits empty fields: Compose 2.40 mounts named volumes as Binds, leaving no `HostConfig.Mounts`, and `--mount` without options leaves no `VolumeOptions`. `host/release/backup.py` now reads these optional keys with `index`, still projecting only the targets of subdirectory mounts; a container that mounts a volume subdirectory in place of the whole data volume is still refused.
+- **验证 / Validation**：用官方 Docker CLI 29.1.3 和 25.0.5 对接模拟的 Engine API，1.3.0 的模板在 Binds、无 `VolumeOptions` 和 `null` 三种形态上报同样的错误，修复后五种形态都通过，子目录挂载仍被识别。在 Docker 29.1.3 + Compose 2.40.3 的实例上只读运行备份前的检查：1.3.0 失败，修复后通过；没有在该实例上执行备份或升级。部署测试的模拟 Docker 改为按原始 JSON 的规则处理缺失的键，新增 Binds 和无选项挂载的备份用例。With the official Docker CLI 29.1.3 and 25.0.5 against a mock Engine API, the 1.3.0 template failed with the same error on the Binds, no-`VolumeOptions` and `null` shapes; the fix passes all five shapes and still detects subdirectory mounts. On an instance running Docker 29.1.3 with Compose 2.40.3, the read-only pre-backup checks failed with 1.3.0 and pass with the fix; no backup or update was run there. The deployment tests' mock Docker now treats missing keys as the raw JSON does, with a new backup case for Binds and option-less mounts.
+
 ## ProkBot Plus 1.3.0 (2026-11-16)
 
 请优先用最新版：Windows 客户端和自开发 Android 都默认使用官方 1.1.0，1.1.0 用不了时可以回退到 0.71.2。Mac 仍为 0.71.2。Host 与 1.2.1 相同，不需要升级。

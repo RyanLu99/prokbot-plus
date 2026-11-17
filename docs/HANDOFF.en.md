@@ -4,10 +4,11 @@
 
 ## Starting point
 
-Handoff dated November 16, 2026. Upstream ProkBot is based on `3e9fe8c`. The table lists the downloadable releases; check later changes with `git log v1.3.0..main` and `git status --short`.
+Handoff dated November 16, 2026. Upstream ProkBot is based on `3e9fe8c`. The table lists the downloadable releases; check later changes with `git log v1.3.1..main` and `git status --short`.
 
 | Baseline | Contents |
 | --- | --- |
+| Plus Release `v1.3.1` | Host deployment tool fix ([#4](https://github.com/ferretgeek/prokbot-plus/issues/4)): `host/release/backup.py` reads the keys that the raw `docker inspect` JSON may omit with `index`, so `backup` and `update` work again on Docker 29 with Compose 2.40. Otherwise the same as `v1.3.0`. |
 | Plus Release `v1.3.0` | Newest first, with a fallback: Windows defaults to 1.1.0, and `--version 0.71.2` or a 0.71.2 installer builds the fallback (`windows/patchers/desktop/inputs.mjs` recognizes the release by size and SHA-256). The Android interface comes from Windows 1.1.0 by default; `fallback` in `android/patchers/supported.json` keeps 0.71.2, and `renderer-patches.mjs` is split per release. The Android bridge adds 1.1.0 dictation, startup defaults, computer view ticket refresh, `insertCSS`, a `moveBefore` fallback and dialog layouts. The Host is the same as `v1.2.1`. |
 | Plus Release `v1.2.1` | Older Android WebView support: `android/client/compat.js` adds newer built-ins that the official interface calls directly and explains a page that did not start ([#3](https://github.com/ferretgeek/prokbot-plus/issues/3)). Otherwise the same as `v1.2.0`. |
 | Plus Release `v1.2.0` | Five platform tool ZIPs and `SHA256SUMS.txt`. The Windows patcher accepts official 1.1.0: `windows/tools/desktop-recipes/` generates the recipes, and `mac/clients/desktop/` adds the 1.1.0 interfaces (per-edge registration, dictation, search mapping). The 0.71.2 inputs moved to `windows/patchers/desktop/0.71.2/` for Android. Host: backups, image identification and recovery in `host/deploy.py` and `host/release/`; three model protocols, streams and tool ordering in `host/runtime/`; management UI and CLI in `host/server/` and `host/tools/host-admin.mjs`; capacity measurement in `host/bench/`. |

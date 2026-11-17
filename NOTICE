@@ -197,6 +197,11 @@ ProkBot Plus 1.3.0 (2026-11-16): Windows and Android default to the official
 1.1.0 interface and fall back to 0.71.2 (items 1 and 10). The Host is
 unchanged. Official programs and generated clients are not distributed.
 
+ProkBot Plus 1.3.1 (2026-11-17): host/release/backup.py reads the Docker
+inspect keys that the daemon may omit (HostConfig.Mounts, VolumeOptions,
+Subpath) with index, so backup and update work on Docker 29 with Compose 2.40
+(item 17).
+
 Third-party components
 ----------------------
 
