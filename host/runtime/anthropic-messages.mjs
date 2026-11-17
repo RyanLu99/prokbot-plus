@@ -105,9 +105,12 @@ function userBlock(part) {
 }
 
 /** Thinking that Anthropic wrote; other formats' reasoning is not replayed here. */
-function anthropicReasoning(part, model, providerId) {
+function anthropicReasoning(part, providerId) {
   const origin = reasoningOrigin(part);
-  if (origin.model && model && origin.model !== model) return false;
+  // Response model IDs can differ from configured aliases (date snapshots or
+  // gateways rewriting the name), but signed Anthropic thinking is still valid
+  // for the same provider. API format and provider identity remain isolation
+  // boundaries.
   if (origin.providerId && providerId && origin.providerId !== providerId) return false;
   if (origin.format) return origin.format === FORMAT;
   if (part.type === 'reasoning') return Boolean(part.signature) && !origin.summarized;
@@ -121,7 +124,7 @@ function anthropicReasoning(part, model, providerId) {
  */
 export function convertAnthropicMessages(messages, { model, providerId, stripThinking = false } = {}) {
   const reasoningParts = messages.filter(message => message.role === 'assistant' && Array.isArray(message.content))
-    .flatMap(message => message.content.filter(part => (part.type === 'reasoning' || part.type === 'redacted-reasoning') && anthropicReasoning(part, model, providerId)));
+    .flatMap(message => message.content.filter(part => (part.type === 'reasoning' || part.type === 'redacted-reasoning') && anthropicReasoning(part, providerId)));
   const replayThinking = !stripThinking && reasoningParts.every(part =>
     part.type === 'redacted-reasoning' ? typeof part.data === 'string' && part.data : typeof part.signature === 'string' && part.signature);
   const system = [], output = [];
@@ -149,9 +152,9 @@ export function convertAnthropicMessages(messages, { model, providerId, stripThi
     } else if (message.role === 'assistant') {
       push('assistant', parts.map(part => {
         if (part.type === 'text') return part.text ? { type: 'text', text: part.text } : null;
-        if (part.type === 'reasoning') return replayThinking && anthropicReasoning(part, model, providerId) ? { type: 'thinking', thinking: part.text ?? '', signature: part.signature } : null;
+        if (part.type === 'reasoning') return replayThinking && anthropicReasoning(part, providerId) ? { type: 'thinking', thinking: part.text ?? '', signature: part.signature } : null;
         if (part.type === 'redacted-reasoning') {
-          if (!replayThinking || !anthropicReasoning(part, model, providerId)) return null;
+          if (!replayThinking || !anthropicReasoning(part, providerId)) return null;
           return reasoningOrigin(part).emptyThinking ? { type: 'thinking', thinking: '', signature: part.data } : { type: 'redacted_thinking', data: part.data };
         }
         if (part.type === 'tool-call') return { type: 'tool_use', id: part.toolCallId, name: part.toolName,

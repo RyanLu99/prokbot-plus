@@ -24,7 +24,8 @@ export function createHarnessModelErrorMapper(library) {
     // Quota exhaustion is permanent until the account changes. Unlike a transient
     // 429, sending the same request again only creates a restart/retry storm.
     const quotaExhausted = code === 'API_KEY_QUOTA_EXHAUSTED' || code === 'insufficient_quota' ||
-      /(?:api[ _-]?key )?(?:quota|额度).*(?:exhaust|used up|用完)|insufficient[ _-]?quota/i.test(error.message);
+      (status === 402 && !code) ||
+      /(?:api[ _-]?key )?(?:quota|额度)\s*(?:is\s*)?(?:exhausted|used up|depleted|exceeded|用完|耗尽)|insufficient[ _-]?quota/i.test(error.message);
     const inputLimit = ['context_length_exceeded', 'input_token_limit_exceeded', 'prompt_too_long'].includes(code) ||
       ([400, 413, 422].includes(status) && /(?:maximum context length|input token limit|prompt (?:is )?too long|context window.*exceed)/i.test(error.message));
     if (inputLimit && typeof InputTokenLimitError === 'function') {

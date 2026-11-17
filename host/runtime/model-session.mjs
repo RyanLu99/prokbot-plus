@@ -81,26 +81,41 @@ function requestCandidate(value, defaults) {
   return candidate;
 }
 
-function retryableFailure(error, { controller, upstreamSignal }) {
-  if (controller.signal.aborted || upstreamSignal?.aborted) {
-    return controller.signal.reason?.name === 'TimeoutError';
-  }
+function quotaExhausted(error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  return code === 'API_KEY_QUOTA_EXHAUSTED' || code === 'insufficient_quota' ||
+    (error?.status === 402 && !code) ||
+    /(?:api[ _-]?key )?(?:quota|额度)\s*(?:is\s*)?(?:exhausted|used up|depleted|exceeded|用完|耗尽)|insufficient[ _-]?quota/i.test(error?.message ?? '');
+}
+
+function retryableFailure(error, { controller, upstreamSignal, idleTimedOut }) {
+  if (controller.signal.aborted || upstreamSignal?.aborted) return idleTimedOut();
   if (error?.name === 'TimeoutError') return true;
   if (error?.name === 'AbortError') return false;
-  if (error?.status === 408 || error?.status === 429 ||
+  if (error?.status === 408 || error?.status === 402 || error?.status === 429 ||
       (Number.isInteger(error?.status) && error.status >= 500 && error.status <= 599)) return true;
   if (Number.isInteger(error?.status) || error instanceof ModelRequestError) return false;
   return error?.name === 'TypeError' || ['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH',
     'ENETUNREACH', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET'].includes(error?.code);
 }
 
-function distinctCredentialCandidates(candidates) {
+function distinctCredentialCandidates(candidates, { exhausted = false } = {}) {
+  if (!exhausted) return candidates;
   const keys = new Set();
   return candidates.filter(candidate => {
     // A fallback sharing a key has the same quota and cannot recover an exhausted account.
     if (keys.has(candidate.apiKey)) return false;
     keys.add(candidate.apiKey);
     return true;
+  });
+}
+
+function skippedCredentialCandidates(candidates) {
+  const keys = new Set();
+  return candidates.filter(candidate => {
+    const duplicate = keys.has(candidate.apiKey);
+    keys.add(candidate.apiKey);
+    return duplicate;
   });
 }
 
@@ -147,6 +162,10 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
   if (!FORMATS[apiFormat]) throw new TypeError(`apiFormat must be one of ${API_FORMATS.join(', ')}`);
   // Adaptive routing may select models with different parameter and replay support.
   const adaptations = new Map();
+  // Once a fallback accepts a call in a tool loop, keep using it for the rest
+  // of that executor. Returning to a primary that expects its own signed
+  // thinking would make the next step invalid when the fallback stripped it.
+  const preferredCandidates = new Map();
   const defaults = { baseUrl, apiKey, apiFormat, model, requestOptions, contextWindowTokens,
     summaryThresholdTokens, profileId, providerId, efforts };
   const effortsFor = id => policy?.models?.find(entry => entry.id === id)?.efforts;
@@ -179,12 +198,30 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
       async function* produce() {
         let notified = false;
         let recordedUsage, reportedModel = model, reportedId, selectedEffort, reportedCandidate;
-        let usageWrite;
+        let usageWrite, usagePending = false;
+        const attemptUsages = [];
+        const snapshotUsage = () => {
+          if (!recordedUsage) return;
+          attemptUsages.push({
+            raw: recordedUsage,
+            model: reportedModel,
+            requestId: reportedId,
+            effort: selectedEffort,
+            profileId: reportedCandidate?.profileId,
+            providerId: reportedCandidate?.providerId,
+          });
+          recordedUsage = undefined;
+        };
         const recordUsage = () => {
-          if (recordedUsage) usageWrite ??= Promise.resolve().then(() =>
-            onUsage({ raw: recordedUsage, model: reportedModel, requestId: reportedId, effort: selectedEffort,
-              profileId: reportedCandidate?.profileId, providerId: reportedCandidate?.providerId })
-          ).catch(error => console.error(`[usage] ${error.message}`));
+          snapshotUsage();
+          if (!usageWrite || usagePending) {
+            usagePending = true;
+            const queued = usageWrite ?? Promise.resolve();
+            usageWrite = queued.then(async () => {
+              for (const usage of attemptUsages.splice(0)) await onUsage(usage);
+            }).catch(error => console.error(`[usage] ${error.message}`))
+              .finally(() => { usagePending = false; });
+          }
           return usageWrite;
         };
         const notifyRequest = id => {
@@ -196,13 +233,21 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
         try {
           controller.signal.throwIfAborted();
           const selected = selectRequest ? await waitForIO(() => selectRequest({ messages, signal: controller.signal })) : undefined;
-          const primary = requestCandidate(selected, defaults);
-          const candidates = distinctCredentialCandidates([primary,
-            ...((selected?.fallbacks ?? []).map(candidate => requestCandidate(candidate, defaults)))]);
+          const requested = requestCandidate(selected, defaults);
+          const configured = [requested,
+            ...((selected?.fallbacks ?? []).map(candidate => requestCandidate(candidate, defaults)))];
+          const preferredKey = preferredCandidates.get(this);
+          const preferredIndex = preferredKey ? configured.findIndex(candidate => candidateKey(candidate) === preferredKey) : -1;
+          const ordered = preferredIndex > 0
+            ? [configured[preferredIndex], ...configured.filter((_, index) => index !== preferredIndex)]
+            : configured;
+          const primary = ordered[0];
+          let candidates = ordered;
           const requestContext = { contextWindowTokens: primary.contextWindowTokens,
             summaryThresholdTokens: primary.summaryThresholdTokens };
           if (trackModel) { selectedContext = requestContext; earlyCompaction = undefined; }
           let turn;
+          let activeIterator;
           for (let attempt = 0; attempt < candidates.length; attempt++) {
             const candidate = candidates[attempt];
             const format = FORMATS[candidate.apiFormat];
@@ -210,11 +255,16 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
             const onCancel = () => attemptController.abort(controller.signal.reason);
             controller.signal.addEventListener('abort', onCancel, { once: true });
             const attemptSignal = attemptController.signal;
+            let idleTimedOut = false;
+            attemptSignal.addEventListener('abort', () => {
+              if (attemptSignal.reason?.name === 'TimeoutError') idleTimedOut = true;
+            }, { once: true });
             const attemptWaitForIO = ioDeadline(attemptController, idleTimeoutMs);
             const adaptationKey = candidateKey(candidate);
             if (!adaptations.has(adaptationKey)) adaptations.set(adaptationKey, { dropped: new Set(), stripReasoning: false, toolImagesAsMessage: false });
             let emittedVisibleOutput = false;
             recordedUsage = undefined;
+            reportedId = undefined;
             reportedModel = candidate.model;
             selectedEffort = candidate.effort;
             reportedCandidate = candidate;
@@ -228,6 +278,7 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
                 providerId: candidate.providerId,
                 onModel: value => { reportedModel = value; }, onId: value => { reportedId = value; },
                 onUsage: value => { recordedUsage = value; } });
+              activeIterator = iterator;
               while (true) {
                 const next = await iterator.next();
                 if (next.done) { turn = next.value; break; }
@@ -235,18 +286,44 @@ export function createModelSession({ baseUrl, apiKey, model, onRequestId, apiFor
                 if (next.value?.type !== 'reasoning') emittedVisibleOutput = true;
                 yield next.value;
               }
+              activeIterator = undefined;
               break;
             } catch (error) {
+              // A cancellation can arrive while onFallback() is still awaiting. Do
+              // not attach another request to an already-canceled controller.
+              controller.signal.throwIfAborted();
+              if (quotaExhausted(error)) {
+                const remaining = candidates.slice(attempt);
+                const skipped = skippedCredentialCandidates(remaining);
+                candidates = distinctCredentialCandidates(candidates, { exhausted: true });
+                const nextDistinct = candidates[attempt + 1];
+                if (skipped.length) {
+                  try {
+                    await onFallback({ from: publicCandidate(candidate), to: nextDistinct ? publicCandidate(nextDistinct) : undefined,
+                      attempt: attempt + 1, reason: 'quota', skipped: skipped.map(publicCandidate) });
+                  } catch (logError) {
+                    console.warn(`[model-session] Unable to record skipped model fallback: ${logError.code ?? logError.name}`);
+                  }
+                }
+              }
               const next = candidates[attempt + 1];
-              if (emittedVisibleOutput || !next || !retryableFailure(error, { controller: attemptController, upstreamSignal: signal })) throw error;
+              if (emittedVisibleOutput || !next || !retryableFailure(error, {
+                controller: attemptController, upstreamSignal: signal, idleTimedOut: () => idleTimedOut,
+              })) throw error;
               try {
                 await onFallback({ from: publicCandidate(candidate), to: publicCandidate(next), attempt: attempt + 1,
-                  reason: attemptController.signal.reason?.name === 'TimeoutError' ? 'timeout'
+                  reason: idleTimedOut ? 'timeout'
                     : Number.isInteger(error?.status) ? `HTTP ${error.status}` : 'network' });
               } catch (logError) {
                 console.warn(`[model-session] Unable to record model fallback: ${logError.code ?? logError.name}`);
               }
+              preferredCandidates.set(this, candidateKey(next));
+              controller.signal.throwIfAborted();
             } finally {
+              if (activeIterator) {
+                await activeIterator.return().catch(() => {});
+                activeIterator = undefined;
+              }
               controller.signal.removeEventListener('abort', onCancel);
               attemptController.abort();
             }

@@ -77,12 +77,12 @@ test('legacy single-provider configuration remains editable as a direct default 
   assert.equal(legacyModelRouting({}).providers.length, 0);
 });
 
-test('catalog context policies use provider metadata, the Terra reference, then no assumed capacity', () => {
+test('catalog context policies use provider metadata and never assume capacity for an unknown model', () => {
   assert.deepEqual(catalogContextPolicy('provider-model', 128_000), {
     contextWindowTokens: 128_000, summaryThresholdTokens: 96_000, contextSource: 'provider',
   });
   assert.deepEqual(catalogContextPolicy('gpt-5.6-terra'), {
-    contextWindowTokens: 258_000, summaryThresholdTokens: 192_000, contextSource: 'reference',
+    contextWindowTokens: 0, summaryThresholdTokens: 0, contextSource: 'unknown',
   });
   assert.deepEqual(catalogContextPolicy('unpublished-model'), {
     contextWindowTokens: 0, summaryThresholdTokens: 0, contextSource: 'unknown',
@@ -133,7 +133,7 @@ test('model administration keeps saved provider keys private and preserves them 
   const directory = await mkdtemp(join(tmpdir(), 'model-routing-admin-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const models = new Models(directory);
-  await models.save(fixture());
+  await models.save({ ...fixture(), migrateLegacyRouting: true });
   const publicConfig = await models.publicConfig();
   assert.equal(JSON.stringify(publicConfig).includes('test-primary-key'), false);
   assert.equal(JSON.stringify(publicConfig).includes('test-backup-key'), false);
@@ -158,6 +158,11 @@ test('legacy Jev configuration remains in the legacy format until an administrat
   const loaded = await loadModelConfig({ env: { GROKBOT_MODEL_ENV: join(directory, 'model.env'), GROKBOT_DATA_DIR: directory } });
   assert.equal(loaded.policy.mode, 'adaptive');
   assert.equal(loaded.jevApiKey, 'test-jev-key');
+  await assert.rejects(models.save(fixture()), { status: 409, message: /旧版按任务难度路由/ });
+  assert.equal(await readFile(join(directory, 'model.env'), 'utf8'), source);
+  const migrated = await models.save({ ...fixture(), migrateLegacyRouting: true });
+  assert.equal(migrated.routingMigrated, false);
+  assert.match(await readFile(join(directory, 'model.env'), 'utf8'), /^GROKBOT_MODEL_ROUTING=/m);
 });
 
 test('transient failures before output move to the next configured model', async () => {
@@ -240,7 +245,7 @@ test('configured summary thresholds are advertised to the Harness after a succes
   assert.deepEqual(session.getEarlyCompaction(), { threshold: 192_000, inputTokens: 0 });
 });
 
-test('reasoning replay is isolated by provider as well as API format and model', () => {
+test('reasoning replay is isolated by provider and API format, not by a provider-rewritten model ID', () => {
   const history = [{ role: 'user', content: 'Start' }, { role: 'assistant', content: [{ type: 'reasoning', text: 'Private chain',
     ...{ providerOptions: reasoningProviderOptions({ format: 'openai', model: 'same-model', providerId: 'one' }) } }] }];
   assert.equal(convertChatMessages(history, { model: 'same-model', providerId: 'one' })[1].reasoning_content, 'Private chain');
@@ -248,7 +253,7 @@ test('reasoning replay is isolated by provider as well as API format and model',
   const anthropicHistory = [{ role: 'user', content: 'Start' }, { role: 'assistant', content: [{ type: 'reasoning', text: 'Signed chain', signature: 'sig',
     ...{ providerOptions: reasoningProviderOptions({ format: 'anthropic', model: 'claude-one', providerId: 'one' }) } }, { type: 'text', text: 'Done' }] }];
   assert.equal(convertAnthropicMessages(anthropicHistory, { model: 'claude-one', providerId: 'one' }).messages[1].content[0].type, 'thinking');
-  assert.equal(convertAnthropicMessages(anthropicHistory, { model: 'claude-two', providerId: 'one' }).messages[1].content[0].type, 'text');
+  assert.equal(convertAnthropicMessages(anthropicHistory, { model: 'claude-one-2026-01-01', providerId: 'one' }).messages[1].content[0].type, 'thinking');
   assert.equal(convertAnthropicMessages(anthropicHistory, { model: 'claude-one', providerId: 'two' }).messages[1].content[0].type, 'text');
 });
 

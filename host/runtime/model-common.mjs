@@ -82,10 +82,7 @@ export async function* readSse(body, { waitForIO = direct, maxEventChars = MAX_E
   if (!body) throw new ModelRequestError('Model response has no body');
   const reader = body.getReader();
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  let pending = '', data = [], buffered = 0;
-  function append(fragment) {
-    pending += fragment;
-  }
+  let line = '', skipLF = false, data = [], buffered = 0;
   function accept(line) {
     if (line === '') {
       const event = data.length ? data.join('\n') : undefined;
@@ -99,57 +96,80 @@ export async function* readSse(body, { waitForIO = direct, maxEventChars = MAX_E
     }
     return undefined;
   }
-  const completeJsonEnd = (source, start) => {
-    if (!['{', '['].includes(source[start])) return undefined;
-    let depth = 0, quoted = false, escaped = false;
-    for (let index = start; index < source.length; index++) {
-      const character = source[index];
-      if (quoted) {
-        if (escaped) escaped = false;
-        else if (character === '\\') escaped = true;
-        else if (character === '"') quoted = false;
-      } else if (character === '"') quoted = true;
-      else if (character === '{' || character === '[') depth++;
-      else if ((character === '}' || character === ']') && --depth === 0) return index + 1;
-    }
-    return undefined;
-  };
-  const gluedData = () => {
+  // Some compatible gateways omit blank lines between data frames. Parse glued
+  // JSON incrementally so a large event is scanned once, not once per chunk.
+  let glued;
+  function resetGlued() { glued = undefined; }
+  function gluedEvents() {
     const events = [];
-    // Some compatible gateways omit blank lines between data frames. Split only
-    // complete JSON values, never a literal "data:" embedded in model text.
-    while (pending.startsWith('data:')) {
-      let start = 5;
-      while (pending[start] === ' ' || pending[start] === '\t') start++;
-      if (pending.startsWith('[DONE]', start)) {
-        events.push('[DONE]'); pending = pending.slice(start + '[DONE]'.length); continue;
+    while (line.startsWith('data:')) {
+      if (!glued) glued = { start: 0, scan: 0, depth: 0, quoted: false, escaped: false, doneFrom: 0 };
+      let start = glued.start || 5;
+      while (line[start] === ' ' || line[start] === '\t') start++;
+      if (start !== glued.start) glued.start = glued.start || 5;
+      if (!glued.doneFrom) glued.doneFrom = start;
+      const doneToken = '[DONE]';
+      if (line.startsWith(doneToken, start)) {
+        const end = start + doneToken.length;
+        // A terminal frame may omit its blank-line separator at EOF, but do not
+        // consume a longer literal value that merely starts with [DONE].
+        if (line.length === end || line.startsWith('data:', end)) {
+          events.push(doneToken); line = line.slice(end); resetGlued(); continue;
+        }
+        break;
       }
-      const end = completeJsonEnd(pending, start);
-      if (end === undefined) break;
-      events.push(pending.slice(start, end)); pending = pending.slice(end);
+      if (!['{', '['].includes(line[start])) break;
+      let { scan, depth, quoted, escaped } = glued;
+      if (!scan) { scan = start; depth = 0; quoted = false; escaped = false; }
+      for (; scan < line.length; scan++) {
+        const character = line[scan];
+        if (quoted) {
+          if (escaped) escaped = false;
+          else if (character === '\\') escaped = true;
+          else if (character === '"') quoted = false;
+        } else if (character === '"') quoted = true;
+        else if (character === '{' || character === '[') depth++;
+        else if ((character === '}' || character === ']') && --depth === 0) {
+          scan++;
+          events.push(line.slice(start, scan));
+          line = line.slice(scan);
+          glued = undefined;
+          break;
+        }
+      }
+      if (glued) {
+        Object.assign(glued, { scan, depth, quoted, escaped });
+        if (line.length - start > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
+        break;
+      }
     }
     return events;
-  };
+  }
   try {
     while (true) {
       const { value, done } = await waitForIO(() => reader.read());
-      append(done ? decoder.decode() : decoder.decode(value, { stream: true }));
+      const chunk = done ? decoder.decode() : decoder.decode(value, { stream: true });
+      let start = !done && skipLF && chunk[0] === '\n' ? 1 : 0;
+      skipLF = false;
       const breaks = /\r\n|\r|\n/g;
+      breaks.lastIndex = start;
       let match;
-      while ((match = breaks.exec(pending))) {
-        // Keep a trailing CR until the next read identifies whether it is CRLF.
-        if (!done && match[0] === '\r' && match.index === pending.length - 1) break;
-        const line = pending.slice(0, match.index);
-        pending = pending.slice(match.index + match[0].length);
+      while ((match = breaks.exec(chunk))) {
+        line += chunk.slice(start, match.index);
+        start = breaks.lastIndex;
+        if (!done && match[0] === '\r' && start === chunk.length) skipLF = true;
         const event = accept(line);
+        line = ''; resetGlued();
         if (event !== undefined) yield event;
-        breaks.lastIndex = 0;
+        breaks.lastIndex = start;
       }
-      for (const event of gluedData()) yield event;
-      if (pending.length > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
+      // `done` only flushes the decoder; EOF alone is not an SSE separator.
+      if (done) break;
+      line += chunk.slice(start);
+      for (const event of gluedEvents()) yield event;
+      if (line.length > maxEventChars) throw new ModelRequestError('Model SSE event exceeds size limit');
       // EOF alone is not an SSE separator. Only the explicitly supported glued
       // frame form above may complete without a normal blank line.
-      if (done) break;
     }
   } finally {
     await reader.cancel().catch(() => {});

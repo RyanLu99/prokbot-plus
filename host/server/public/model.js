@@ -11,7 +11,7 @@ const formats = [
 const levels = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 const levelLabels = { default: '模型默认', none: '无', minimal: '极低', low: '轻度', medium: '中度', high: '高度', xhigh: '超高', max: '最高' };
 const defaultUrls = { openai: 'https://api.openai.com/v1', 'openai-responses': 'https://api.openai.com/v1', anthropic: 'https://api.anthropic.com' };
-const defaultContextWindowTokens = 258_000, defaultSummaryThresholdTokens = 192_000;
+const defaultContextWindowTokens = 0, defaultSummaryThresholdTokens = 0;
 
 const clone = value => structuredClone(value);
 const uid = prefix => clientId(prefix);
@@ -75,6 +75,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
       <section class="section"><div class="section-head"><h2 class="section-title">模型档案</h2><div class="section-actions"><button id="add-model-profile" class="icon-btn" type="button" aria-label="添加模型档案"></button></div></div><div id="model-profiles" class="card"></div></section>
       <section class="section"><div class="section-head"><h2 class="section-title">默认路由</h2></div><div id="model-default-route" class="card"></div></section>
       <section class="section"><div class="section-head"><h2 class="section-title">Bot 路由</h2><div class="section-actions"><button id="refresh-model-bots" class="icon-btn" type="button" aria-label="刷新 Bot"></button></div></div><div id="model-bot-routes" class="card"></div></section>
+      <p id="legacy-routing-notice" class="hint" role="status" hidden></p>
       <p id="model-error" class="error" role="alert" hidden></p>
       <div class="actions"><span id="model-apply-title" class="status-text" role="status"></span><button type="submit" class="btn btn-primary">保存配置</button></div>
     </form>
@@ -83,7 +84,8 @@ export function createModelPage({ api, toast, busy, refresh }) {
   const defaultRoot = $('#model-default-route'), botsRoot = $('#model-bot-routes'), routingLog = createRoutingLog({ api });
   const providerEditor = editor(panel, 'model-provider-editor'), profileEditor = editor(panel, 'model-profile-editor');
   const botEditor = editor(panel, 'model-bot-route-editor');
-  let config = emptyRouting(), pendingKeys = new Map(), loaded = false, dirty = false, active = false, agents = [], agentSignature = '';
+  let config = emptyRouting(), pendingKeys = new Map(), loaded = false, dirty = false, active = false, agents = [],
+    agentSignature = '', legacyRouting = false;
 
   function profileById(id) { return config.profiles.find(profile => profile.id === id); }
   function providerById(id) { return config.providers.find(provider => provider.id === id); }
@@ -130,13 +132,14 @@ export function createModelPage({ api, toast, busy, refresh }) {
     if (!config.defaultRoute) throw new Error(t('请设置默认路由。'));
     for (const provider of config.providers) if (!providerHasKey(provider))
       throw new Error(t('请填写“{0}”的 API Key。', provider.name));
-    return { version: 1, providers: config.providers.map(serializedProvider), profiles: config.profiles.map(profile => ({
+    return { version: 1, ...(legacyRouting ? { migrateLegacyRouting: true } : {}), providers: config.providers.map(serializedProvider), profiles: config.profiles.map(profile => ({
       id: profile.id, name: profile.name, providerId: profile.providerId, model: profile.model, efforts: [...profile.efforts],
       contextWindowTokens: profile.contextWindowTokens ?? 0, summaryThresholdTokens: profile.summaryThresholdTokens ?? 0,
     })), defaultRoute: routeCopy(config.defaultRoute), botRoutes: Object.fromEntries(Object.entries(config.botRoutes)
       .map(([id, route]) => [id, routeCopy(route)]).filter(([, route]) => route)) };
   }
   function setConfig(value) {
+    legacyRouting = value.routingMigrated === true;
     config = { version: 1, providers: (value.providers ?? []).map(provider => ({ ...provider })),
       profiles: (value.profiles ?? []).map(profile => ({ ...profile, efforts: [...(profile.efforts ?? [])] })),
       defaultRoute: null, botRoutes: clone(value.botRoutes ?? {}) };
@@ -144,6 +147,11 @@ export function createModelPage({ api, toast, busy, refresh }) {
     config.botRoutes = Object.fromEntries(Object.entries(config.botRoutes)
       .map(([id, route]) => [id, routeCopy(route)]).filter(([, route]) => route));
     pendingKeys = new Map(); dirty = false; loaded = true; render();
+    const notice = $('#legacy-routing-notice');
+    notice.hidden = !legacyRouting;
+    notice.textContent = legacyRouting
+      ? t('当前仍使用旧版按任务难度路由（Jev）。保存后会迁移为按 Bot 路由，并移除智能路由界面；如需保留旧配置，请不要保存。')
+      : '';
     $('#model-apply-title').textContent = applyText(value);
   }
   function providerOptions(select, selected) {
@@ -210,7 +218,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
           config.providers = config.providers.filter(item => item.id !== provider.id); pendingKeys.delete(provider.id); markDirty(); render();
         }) },
       ]);
-      providersRoot.append(item({ tile: provider.name, title: provider.name,
+      providersRoot.append(item({ icon: 'model', title: provider.name,
         badges: [badge(provider.apiFormat), badge(providerHasKey(provider) ? t('已配置') : t('缺少 API Key'), providerHasKey(provider) ? 'success' : 'danger')],
         meta: [provider.baseUrl, linked.length ? t('{0} 个模型档案', linked.length) : t('尚未创建模型档案')], actions: [more] }));
     }
@@ -246,7 +254,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
         }) },
       ]);
       const effortText = profile.efforts.length ? profile.efforts.map(level => t(levelLabels[level])).join(' · ') : t('仅模型默认');
-      profilesRoot.append(item({ tile: profile.name, title: profile.name, badges: [badge(profile.model)],
+      profilesRoot.append(item({ icon: 'model', title: profile.name, badges: [badge(profile.model)],
         meta: [`${provider?.name ?? profile.providerId} · ${effortText}`, t('上下文 {0} · 摘要 {1}', formatTokenCount(profile.contextWindowTokens), formatTokenCount(profile.summaryThresholdTokens))],
         actions: [test, more] }));
     }
@@ -291,7 +299,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
       }).catch(error => toast(error.message, true));
       const edit = iconButton('edit', t('编辑 Bot 路由'));
       edit.onclick = () => showBotRoute(bot);
-      botsRoot.append(item({ tile: bot.name, title: bot.name,
+      botsRoot.append(item({ icon: 'share', title: bot.name,
         badges: [badge(override ? t('已覆盖') : t('使用默认'), override ? 'accent' : '')],
         meta: [routeDescription(route), bot.missing ? t('当前 Host 未报告此 Bot；保存时会保留其路由。') : ''], actions: [summarize, edit] }));
     }
@@ -427,7 +435,14 @@ export function createModelPage({ api, toast, busy, refresh }) {
   $('#refresh-routing').onclick = () => routingLog.load();
   form.onsubmit = event => { event.preventDefault(); $('#model-error').hidden = true; busy(event.submitter, async () => {
     try {
+      if (legacyRouting && !await confirmAction({
+        title: t('迁移旧版模型路由？'),
+        message: t('保存后会改为按 Bot 选择模型，旧版按任务难度路由和 Jev 选择将不再生效。'),
+        action: t('迁移并保存'),
+      })) return;
       const result = await api('/admin/api/model', { method: 'PUT', body: input() });
+      legacyRouting = false;
+      $('#legacy-routing-notice').hidden = true;
       setConfig(result); toast(t('配置已保存')); await refresh();
     } catch (error) { showError(error); }
   }); };
@@ -443,6 +458,7 @@ export function createModelPage({ api, toast, busy, refresh }) {
       if (!dirty) setConfig(await api('/admin/api/model'));
       if (active) await routingLog.load();
     },
-    reset() { config = emptyRouting(); pendingKeys = new Map(); loaded = false; dirty = false; agents = []; agentSignature = ''; form.reset(); },
+    reset() { config = emptyRouting(); pendingKeys = new Map(); loaded = false; dirty = false; active = false; agents = [];
+      agentSignature = ''; legacyRouting = false; $('#legacy-routing-notice').hidden = true; form.reset(); },
   };
 }

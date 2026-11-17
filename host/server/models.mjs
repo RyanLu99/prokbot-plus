@@ -139,6 +139,8 @@ export class Models {
     const previous = await this.current();
     const multiProvider = Array.isArray(input.providers) || own(input, 'defaultRoute') || input.version === 1;
     if (!multiProvider) return this.legacyRouting(input, previous);
+    check(!previous.routingMigrated || input.migrateLegacyRouting === true, 409,
+      '检测到旧版按任务难度路由。请先确认迁移到按 Bot 路由，再保存。');
     let routing;
     try { routing = validateModelRouting(input, { previous: previous.routing }); }
     catch (error) { check(false, 400, publicError(error)); }

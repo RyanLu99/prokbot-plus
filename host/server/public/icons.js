@@ -37,3 +37,7 @@ export function icon(name, size = 16) {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]}</svg>`;
 }
 
+export function isBuiltinIcon(name) {
+  return Object.hasOwn(paths, name);
+}
+

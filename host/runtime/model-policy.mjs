@@ -3,16 +3,6 @@ import { chatReasoning } from './openai-chat.mjs';
 import { claudeTraits } from './anthropic-messages.mjs';
 export const TIERS = ['routine', 'reasoning', 'expert'];
 export const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
-export const DEFAULT_CONTEXT_WINDOW_TOKENS = 258_000;
-export const DEFAULT_SUMMARY_THRESHOLD_TOKENS = 192_000;
-
-// Some compatible APIs omit capacity metadata from /models. Keep only verified
-// references: assuming a large capacity for an unknown model delays compaction
-// until the upstream rejects the conversation.
-const REFERENCE_CONTEXT_POLICIES = [
-  { match: /^gpt-5\.6-terra$/i, contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
-    summaryThresholdTokens: DEFAULT_SUMMARY_THRESHOLD_TOKENS },
-];
 
 function catalogCapacity(value) {
   return Number.isSafeInteger(value) && value > 0 && value <= 100_000_000 ? value : undefined;
@@ -27,9 +17,6 @@ function summaryThreshold(contextWindowTokens) {
 export function catalogContextPolicy(model, reportedCapacity) {
   const capacity = catalogCapacity(reportedCapacity);
   if (capacity) return { contextWindowTokens: capacity, summaryThresholdTokens: summaryThreshold(capacity), contextSource: 'provider' };
-  const reference = REFERENCE_CONTEXT_POLICIES.find(entry => entry.match.test(String(model)));
-  if (reference) return { contextWindowTokens: reference.contextWindowTokens,
-    summaryThresholdTokens: reference.summaryThresholdTokens, contextSource: 'reference' };
   return { contextWindowTokens: 0, summaryThresholdTokens: 0, contextSource: 'unknown' };
 }
 

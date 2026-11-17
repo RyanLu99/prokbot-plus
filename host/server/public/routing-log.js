@@ -11,12 +11,15 @@ function fallbackEntry(item) {
   entry.dataset.id = item.id;
   const headline = node('span', 'routing-headline');
   headline.append(node('strong', '', item.agentId || t('默认路由')), badge(t('模型回退'), 'warn'), node('time', 'hint', date(item.at)));
-  copy.append(headline, node('span', 'hint', `${from.profileName ?? from.profileId ?? t('主模型')} → ${to.profileName ?? to.profileId ?? t('备用模型')}`));
+  const target = to?.profileName ?? to?.profileId ?? t('没有可用备用模型');
+  copy.append(headline, node('span', 'hint', `${from.profileName ?? from.profileId ?? t('主模型')} → ${target}`));
   summary.append(copy); entry.append(summary);
   const details = [
-    `${t('服务')}：${from.providerName ?? from.providerId ?? t('未知')} → ${to.providerName ?? to.providerId ?? t('未知')}`,
+    `${t('服务')}：${from.providerName ?? from.providerId ?? t('未知')} → ${to?.providerName ?? to?.providerId ?? t('未选择')}`,
     `${t('失败类别')}：${item.reason ?? t('未知')}${item.session ? ` · ${t('会话')}：${item.session}` : ''}`,
   ];
+  if (item.skipped?.length) details.push(`${t('跳过同 API Key 的模型')}：${item.skipped.map(value =>
+    value.profileName ?? value.profileId ?? value.model).join('、')}`);
   const body = node('div', 'routing-body');
   details.forEach(value => body.append(node('p', 'hint', value))); entry.append(body);
   return entry;
