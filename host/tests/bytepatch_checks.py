@@ -2,6 +2,7 @@ import hashlib
 import io
 import importlib.util
 import json
+import base64
 from pathlib import Path
 import sys
 import tempfile
@@ -67,6 +68,12 @@ class PinnedPatchTests(unittest.TestCase):
             (directory / 'module.mjs').write_bytes(b'changed output')
             with self.assertRaisesRegex(ValueError, 'Prepared reliability manifest mismatch: module.mjs'):
                 patch_host.verify_reliability_manifest(Path(tmp))
+
+    def test_tool_stream_recipe_waits_for_both_error_branches(self):
+        recipe = bytepatch.load(Path(__file__).resolve().parents[1] / 'recipes' / 'host' /
+                                'release-reliability__engine-tool-stream-executor.mjs.gbp.gz')
+        additions = b''.join(base64.b64decode(operation[1]) for operation in recipe['ops'] if operation[0] == 'add')
+        self.assertIn(b'await Promise.allSettled([stream1.throw(e), stream22.throw(e)]', additions)
 
 
 if __name__ == '__main__':
