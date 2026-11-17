@@ -180,6 +180,9 @@ export function textValue(value) {
   return typeof value === 'string' ? value : JSON.stringify(value ?? '');
 }
 
+/** OpenAI-compatible providers reject empty or overlong function names. */
+export const validFunctionName = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
+
 export function messageParts(message) {
   return typeof message.content === 'string' ? [{ type: 'text', text: message.content }] : message.content ?? [];
 }
