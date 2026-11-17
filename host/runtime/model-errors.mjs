@@ -25,7 +25,7 @@ export function createHarnessModelErrorMapper(library) {
     // 429, sending the same request again only creates a restart/retry storm.
     const quotaExhausted = code === 'API_KEY_QUOTA_EXHAUSTED' || code === 'insufficient_quota' ||
       (status === 402 && !code) ||
-      /(?:api[ _-]?key )?(?:quota|额度)\s*(?:is\s*)?(?:exhausted|used up|depleted|exceeded|用完|耗尽)|insufficient[ _-]?quota/i.test(error.message);
+      /(?:api[ _-]?key|account)\s+(?:quota|credit|balance)\s+(?:is\s+)?(?:exhausted|used up|depleted|exceeded)|(?:账户|账户余额|API\s*额度|额度)\s*(?:已)?\s*(?:用完|耗尽|不足)/i.test(error.message);
     const inputLimit = ['context_length_exceeded', 'input_token_limit_exceeded', 'prompt_too_long'].includes(code) ||
       ([400, 413, 422].includes(status) && /(?:maximum context length|input token limit|prompt (?:is )?too long|context window.*exceed)/i.test(error.message));
     if (inputLimit && typeof InputTokenLimitError === 'function') {

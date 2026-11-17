@@ -83,9 +83,11 @@ function requestCandidate(value, defaults) {
 
 function quotaExhausted(error) {
   const code = typeof error?.code === 'string' ? error.code : '';
-  return code === 'API_KEY_QUOTA_EXHAUSTED' || code === 'insufficient_quota' ||
-    (error?.status === 402 && !code) ||
-    /(?:api[ _-]?key )?(?:quota|额度)\s*(?:is\s*)?(?:exhausted|used up|depleted|exceeded|用完|耗尽)|insufficient[ _-]?quota/i.test(error?.message ?? '');
+  if (code === 'API_KEY_QUOTA_EXHAUSTED' || code === 'insufficient_quota') return true;
+  // A bare 402 is a balance error, but a 429 or a model-specific quota
+  // message can be temporary and must remain retryable.
+  if (error?.status === 402 && !code) return true;
+  return /(?:api[ _-]?key|account)\s+(?:quota|credit|balance)\s+(?:is\s+)?(?:exhausted|used up|depleted|exceeded)|(?:账户|账户余额|API\s*额度|额度)\s*(?:已)?\s*(?:用完|耗尽|不足)/i.test(error?.message ?? '');
 }
 
 function retryableFailure(error, { controller, upstreamSignal, idleTimedOut }) {

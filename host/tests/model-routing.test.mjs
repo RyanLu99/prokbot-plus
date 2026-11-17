@@ -8,7 +8,9 @@ import { convertAnthropicMessages } from '../runtime/anthropic-messages.mjs';
 import { convertChatMessages } from '../runtime/openai-chat.mjs';
 import { readSse, reasoningProviderOptions } from '../runtime/model-common.mjs';
 import { loadModelConfig } from '../runtime/config.mjs';
+import { contextPolicyFor } from '../runtime/context-policy.mjs';
 import { installHostNetworkBoundary } from '../runtime/host-network.mjs';
+import { createInference } from '../runtime/host-extensions.mjs';
 import { catalogContextPolicy, defaultPolicy } from '../runtime/model-policy.mjs';
 import { legacyModelRouting, modelRouteForAgent, parseModelRouting, publicModelRouting, validateModelRouting } from '../runtime/model-routing.mjs';
 import { Models } from '../server/models.mjs';
@@ -35,6 +37,15 @@ const fixture = () => ({
 });
 
 const sse = text => new Response(`data: ${JSON.stringify({ id: 'chat_1', model: 'gpt-careful', choices: [{ index: 0, delta: { content: text }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`, {
+  status: 200, headers: { 'content-type': 'text/event-stream' },
+});
+const responsesSse = text => new Response([
+  { type: 'response.output_text.delta', output_index: 0, item_id: 'msg_1', delta: text },
+  { type: 'response.output_item.done', output_index: 0, item: { type: 'message', id: 'msg_1',
+    status: 'completed', content: [{ type: 'output_text', text }] } },
+  { type: 'response.completed', response: { id: 'resp_1', model: 'gpt-careful', status: 'completed',
+    output: [{ type: 'message', id: 'msg_1', status: 'completed', content: [{ type: 'output_text', text }] }] } },
+].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''), {
   status: 200, headers: { 'content-type': 'text/event-stream' },
 });
 const failure = status => new Response(JSON.stringify({ error: { message: `HTTP ${status}` } }), { status,
@@ -66,6 +77,52 @@ test('routes choose per-Bot providers, efforts and ordered backups without expos
   const publicConfig = publicModelRouting(config);
   assert.equal(JSON.stringify(publicConfig).includes('test-primary-key'), false);
   assert.equal(publicConfig.providers[0].hasApiKey, true);
+});
+
+test('Host inference selects a Bot route at the real HTTP request boundary', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'host-inference-routing-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const routing = validateModelRouting(fixture());
+  const config = {
+    ...primary,
+    modelRouting: routing,
+    policy: defaultPolicy(primary.model),
+    usageDirectory: join(directory, 'usage'),
+    routingDirectory: join(directory, 'routing'),
+    modelBaseUrls: routing.providers.map(provider => provider.baseUrl),
+  };
+  const requests = [];
+  class HarnessError extends Error {}
+  const library = {
+    PrivacyMode: { NO_STORAGE: 'no-storage' },
+    ConnectError: HarnessError,
+    ActionRequiredError: HarnessError,
+    NonRetriableError: HarnessError,
+    Code: { ResourceExhausted: 8, Unavailable: 14, Internal: 13 },
+  };
+  const inference = createInference(config, library, {}, {
+    fetchImpl: async (url, options) => {
+      requests.push({ url, body: JSON.parse(options.body) });
+      return JSON.parse(options.body).model === 'gpt-careful' ? responsesSse('OK') : sse('OK');
+    },
+  });
+
+  const run = async options => {
+    const session = inference.port.createSession(() => {}, options);
+    const result = session.getExecutor([{ role: 'user', content: 'Hello' }]).stream({}, 'routing-entry', []);
+    await Array.fromAsync(result.fullStream);
+    await result.response;
+  };
+  await run({ agentId: 'bot_alpha' });
+  await run({ getAgentId: () => 'bot_alpha' });
+  await run({});
+
+  assert.deepEqual(requests.map(request => [request.url, request.body.model,
+    request.body.reasoning_effort ?? request.body.reasoning?.effort]), [
+    ['https://backup.example/v1/responses', 'gpt-careful', 'medium'],
+    ['https://backup.example/v1/responses', 'gpt-careful', 'medium'],
+    ['https://primary.example/v1/chat/completions', 'gpt-fast', 'low'],
+  ]);
 });
 
 test('legacy single-provider configuration remains editable as a direct default route', () => {
@@ -231,6 +288,33 @@ test('a model that has emitted only reasoning may use its configured backup', as
   assert.equal(requests.length, 2);
   assert.equal(fallbacks.length, 1);
   assert.equal(response.modelId, 'gpt-careful');
+});
+
+test('legacy model.env context and summary thresholds enable compaction through the real config path', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'model-routing-compaction-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const policy = defaultPolicy('legacy-compaction-model');
+  policy.models = [{ id: 'legacy-compaction-model', efforts: ['low'],
+    contextWindowTokens: 128_000, summaryThresholdTokens: 96_000 }];
+  await writeFile(join(directory, 'model.env'), [
+    'MODEL_API_FORMAT=openai',
+    'OPENAI_BASE_URL=https://legacy.example/v1',
+    'OPENAI_API_KEY=test-legacy-key',
+    'OPENAI_MODEL=legacy-compaction-model',
+    'OPENAI_CONTEXT_WINDOW_TOKENS=128000',
+    `GROKBOT_MODEL_POLICY=${JSON.stringify(policy)}`,
+    '',
+  ].join('\n'));
+  const config = await loadModelConfig({ env: { GROKBOT_MODEL_ENV: join(directory, 'model.env'), GROKBOT_DATA_DIR: directory } });
+  const context = contextPolicyFor(config, config.model);
+  assert.deepEqual(context, { contextWindowTokens: 128_000, summaryThresholdTokens: 96_000 });
+  const session = createModelSession({ ...config, ...context, fetchImpl: async () => sse('OK'),
+    selectRequest: async () => ({ model: config.model, ...context, fallbacks: [] }) });
+  const result = session.getExecutor([{ role: 'user', content: 'Hello' }]).stream({}, 'legacy-compaction', []);
+  await Array.fromAsync(result.fullStream);
+  const response = await result.response;
+  assert.equal(response.supportsSelfSummary, true);
+  assert.equal(response.earlyCompactionContextTokenThreshold, 96_000);
 });
 
 test('configured summary thresholds are advertised to the Harness after a successful model response', async () => {

@@ -197,12 +197,33 @@ test('quota exhaustion maps to a non-retryable Harness error after all routes fa
   assert.equal(mapped.displayInfo.isRetryable, false);
 });
 
-test('a transient 429 whose text mentions a quota is still retryable', () => {
+test('quota-like 429 errors remain retryable unless the API key is explicitly exhausted', () => {
   class ConnectError extends Error {}
   class ActionRequiredError extends Error {}
   class NonRetriableError extends Error {}
   const map = createHarnessModelErrorMapper({ ConnectError, ActionRequiredError, NonRetriableError,
     Code: { ResourceExhausted: 8, Unavailable: 14, Internal: 13 } });
-  const mapped = map(new ModelRequestError('Requests to this model are temporarily over quota; retry later.', { status: 429 }));
-  assert.ok(mapped instanceof ConnectError);
+  for (const message of [
+    'Requests to this model are temporarily over quota; retry later.',
+    '429 temporary quota exceeded; retry later',
+    'temporary quota exhausted; retry later',
+  ]) {
+    const mapped = map(new ModelRequestError(message, { status: 429 }));
+    assert.ok(mapped instanceof ConnectError, message);
+  }
+  const permanent = map(new ModelRequestError('429 API key quota exhausted', { status: 429 }));
+  assert.ok(permanent instanceof NonRetriableError);
+});
+
+test('a temporary quota 429 still reaches a same-key fallback', async () => {
+  const requests = [];
+  const model = session(async (url, options) => {
+    requests.push(JSON.parse(options.body).model);
+    return requests.length === 1 ? failure(429, 'temporary quota exceeded; retry later') : done('recovered');
+  }, () => ({ model: 'primary', fallbacks: [
+    { baseUrl: 'https://same-key.example/v1', apiKey: 'primary-key', apiFormat: 'openai', model: 'other' },
+  ] }));
+  const result = model.getExecutor([{ role: 'user', content: 'hello' }]).stream({}, 'test', []);
+  await Array.fromAsync(result.fullStream);
+  assert.deepEqual(requests, ['primary', 'other']);
 });

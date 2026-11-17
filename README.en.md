@@ -182,14 +182,14 @@ The APK is signed with a key that is yours alone, and later upgrades must use th
 
 ### Three model APIs and Bot routes
 
-<p align="center"><img src="docs/images/admin-model.png" alt="Chat model settings in the admin page: API format, Base URL, API key, default model and thinking effort" width="760"></p>
+<p align="center"><img src="docs/images/admin-model.png" alt="Model settings in the admin page: services, profiles, default route and Bot routes" width="760"></p>
 
 Upstream supports only OpenAI Chat Completions. Plus adds **Anthropic Messages** and **OpenAI Responses**. All three formats fully support images, files, tool calls, thinking effort and reasoning carried across turns. The admin page separates model services, profiles, a default route and Bot routes: one service can have several profiles, and an individual Bot can override its primary model, thinking effort and backup order.
 
 - Switching models or formats in the middle of a conversation doesn't break it;
 - When a provider doesn't support an optional parameter, it is removed and the request retried automatically;
 - Automatic safety review works with all three formats too.
-- Before a primary model has emitted visible text or a tool call, an eligible upstream failure can proceed through independent-key backups in order. It never switches after visible output, avoiding duplicate replies or tool execution.
+- Before a primary model has emitted visible text or a tool call, 402, 408, 429, 5xx, network errors and Host upstream-I/O idle timeouts can proceed through backups in order; a same-key backup is skipped only for explicit quota exhaustion. It never switches after visible output, avoiding duplicate replies or tool execution.
 
 ### Web access and images
 
