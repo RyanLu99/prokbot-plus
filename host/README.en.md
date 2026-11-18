@@ -34,6 +34,8 @@ Select the instance with `init` first; use `update` instead of `up` for an exist
 
 Local mode backs up `host-data`, `box-home` and `box-workspace`. A split Host has only `host-data`; back up `gateway-data` and both desktop volumes separately on the execution machine. The backup directory contains only volume archives and a checksum manifest, **not images, the instance directory's `.env`, the host OS or other disk contents**. Volumes can hold device identities, model credentials, chats and workspace files. Keep the backup private.
 
+The Bot desktop needs the Host's Agent memories, transcript indexes, user memory, workflows, plugins and managed skills. Compose mounts the parent of each of those six `runtime/host-data` trees into Box at both `/home/box/sand-data/<tree>` and `/data/runtime/host-data/<tree>`, so newly created Agents need no further mount changes. Deployment creates only missing directories and sets them to `1000:1000 0750`; `connector-secrets`, `model.env`, `auth.json`, `projects` and internal tokens remain hidden. `host-data` is still archived once, and backup or update refuses a Box that omits, adds or misconfigures any of these mounts.
+
 A manual backup pauses running project containers and restores their original state. `update` builds the candidate first, then stops the old services before taking the volume backup so it includes writes made during the build. An unmanaged submount such as `/data/uploads` blocks the operation. A split deployment is not an atomic cross-machine snapshot: the operator must coordinate stopping writes on both sides and retain the two sets of archives separately.
 
 ```sh

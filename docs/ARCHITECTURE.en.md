@@ -101,6 +101,8 @@ The original Host is a Node.js program. This project replaces only the four part
 - **`host` container**: the admin service listens on 8000, mapped to `${GROKBOT_LISTEN_ADDRESS:-127.0.0.1}:${GROKBOT_PUBLIC_PORT:-18080}` on the host machine. The original Host listens only on `127.0.0.1:1340` inside the container.
 - **`box` container**: the official Linux desktop. Its VNC port is visible only inside the container network.
 
+Box shares only the six data trees required by the original Host: `agents`, `agent-transcripts`, `user-memory`, `workflows`, `plugins` and `managed-skills`. Each parent directory is mounted at both `/home/box/sand-data/<tree>` and `/data/runtime/host-data/<tree>`, so Agents created later are visible without another mount change. `connector-secrets`, `model.env`, `auth.json`, `projects` and other internal data are never mounted into Box. Before startup the Host image creates only missing allowlisted directories and sets them to `1000:1000 0750`; deployment, backup and recovery validate the complete mount set.
+
 | Data | Contents |
 | --- | --- |
 | Volume `host-data` (`/data`) | Administrator (`auth.json`), devices, Bots, chat history, usage statistics, all settings. The model key is in `model.env`, web settings in `web-services.json`, image settings in `media.json` |

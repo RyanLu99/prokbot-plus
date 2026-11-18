@@ -101,6 +101,8 @@ flowchart LR
 - **`host` 容器**：管理服务监听 8000，映射到宿主机 `${GROKBOT_LISTEN_ADDRESS:-127.0.0.1}:${GROKBOT_PUBLIC_PORT:-18080}`。原版 Host 只监听容器内的 `127.0.0.1:1340`。
 - **`box` 容器**：官方 Linux 桌面，VNC 端口只在容器网络内可见。
 
+Box 只共享原版 Host 需要的六棵数据目录：`agents`、`agent-transcripts`、`user-memory`、`workflows`、`plugins`、`managed-skills`。每棵目录的父目录同时挂到 `/home/box/sand-data/<目录>` 和 `/data/runtime/host-data/<目录>`，所以以后新建 Agent 会自动可见。`connector-secrets`、`model.env`、`auth.json`、`projects` 和其他内部数据不会挂入 Box。Host 镜像在启动前只创建缺失的白名单目录，并把它们设为 `1000:1000 0750`；部署、备份和恢复都会核对完整的挂载集合。
+
 | 数据 | 内容 |
 | --- | --- |
 | 卷 `host-data`（`/data`） | 管理员（`auth.json`）、设备、Bot、对话记录、用量统计、各类配置。模型 Key 在 `model.env`，联网配置在 `web-services.json`，图片配置在 `media.json` |

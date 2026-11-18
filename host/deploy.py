@@ -123,7 +123,9 @@ def compose_mounts(service, definition):
         tmpfs = [tmpfs]
     mounts.extend({'type': 'tmpfs', 'target': item.partition(':')[0]} for item in tmpfs)
 
-    roots = volume_backup.MOUNTS[service].values()
+    roots = set(volume_backup.MOUNTS[service].values())
+    data_targets = set(volume_backup.BOX_DATA_TARGETS) if service == 'box' else set()
+    allowed = roots | data_targets
     by_target = {}
     for mount in mounts:
         target = mount.get('target')
@@ -132,8 +134,8 @@ def compose_mounts(service, definition):
         dest = posixpath.normpath('/' + target.lstrip('/'))
         if dest in by_target:
             raise ValueError(f'Duplicate effective Compose mount on {service} at {dest}.')
-        if dest not in roots and (mount.get('type') != 'tmpfs' or
-                any(posixpath.commonpath((root, dest)) in (root, dest) for root in roots)):
+        if dest not in allowed and (mount.get('type') != 'tmpfs' or
+                any(posixpath.commonpath((root, dest)) in (root, dest) for root in allowed)):
             raise ValueError(f'Unmanaged mount on {service} at {dest} would be omitted from the backup.')
         by_target[dest] = mount
     return by_target
@@ -152,6 +154,14 @@ def instance_images(dc, project, services, existing, pinned=None):
                     mount.get('type') != 'volume' or mount.get('source') != suffix or
                     mount.get('target') != dest or mount.get('read_only') or (mount.get('volume') or {}).get('subpath')):
                 raise ValueError(f'Effective Compose mount {s}:{dest} does not select the root of the expected writable project volume.')
+        if s == 'box':
+            for target, tree in volume_backup.BOX_DATA_TARGETS.items():
+                mount = mounts.get(target, {})
+                subpath = (mount.get('volume') or {}).get('subpath')
+                if (mount.get('type') != 'volume' or mount.get('source') != 'host-data' or
+                        mount.get('target') != target or mount.get('read_only') or
+                        subpath != str(volume_backup.DATA_SOURCE_ROOT / tree)):
+                    raise ValueError(f'Effective Compose mount box:{target} does not select the approved Host-data tree.')
     images = {s: config['services'][s]['image'] for s in services}
     if pinned is not None and images != pinned:
         raise ValueError('Effective Compose configuration did not select the requested immutable images.')
@@ -181,7 +191,7 @@ def inventory(project, services, *, new):
     if volumes != expected:
         raise ValueError('Volume set does not match this topology; check the original project, --home and --host-only.')
     volume_backup.verify_volumes(project, volumes)
-    containers = volume_backup.project_services(project, services)
+    containers = volume_backup.project_services(project, services, host_data=f'{project}_host-data' in volumes)
     volume_backup.verify_users(volumes, containers)
     return containers
 
@@ -203,8 +213,33 @@ def startup_images(services, host_id):
     return images
 
 
+def compose_version():
+    version = run(['docker', 'compose', 'version', '--short'], capture=True).stdout.strip()
+    if not re.fullmatch(r'v?\d+\.\d+(?:\.\d+)?(?:[-+][\w.+-]+)?', version):
+        raise ValueError('Docker Compose did not report a usable version for the Host data volume.')
+    return version
+
+
+def ensure_host_data(project, image):
+    name = project+'_host-data'
+    if name not in set(volume_backup.output('volume', 'ls', '-q').splitlines()):
+        run(['docker', 'volume', 'create',
+             '--label', f'{volume_backup.PROJECT_LABEL}={project}',
+             '--label', f'{volume_backup.VOLUME_LABEL}=host-data',
+             '--label', f'{volume_backup.VERSION_LABEL}={compose_version()}',
+             name], capture=True)
+    labels = volume_backup.volume_labels(name)
+    if labels.get(volume_backup.PROJECT_LABEL) != project or labels.get(volume_backup.VOLUME_LABEL) != 'host-data':
+        raise ValueError('The Host data volume does not belong to the selected project.')
+    run(['docker', 'run', '--rm', '--pull=never', '--network', 'none', '--read-only', '--user', '0:0',
+         '--entrypoint', 'python3', '--mount', f'type=volume,src={name},dst=/data,volume-nocopy', image,
+         '/opt/grokbot/release/data_init.py', '/data/runtime/host-data'])
+
+
 def up_and_wait(dc, project, services, images, *, existing):
     instance_images(dc, project, services, existing, pinned=images)
+    if 'box' in services:
+        ensure_host_data(project, images['host'])
     run(dc + ['up', '-d', '--pull', 'never', '--wait', '--wait-timeout', '180'], env=volume_policy(existing, images))
     current = inventory(project, services, new=False)
     if (set(current) != set(services) or any(c['State']['Status'] != 'running' for c in current.values()) or

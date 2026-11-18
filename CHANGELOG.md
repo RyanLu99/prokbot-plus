@@ -4,6 +4,15 @@
 
 Versions start at ProkBot Plus 1.0.0. Upstream ProkBot releases are listed at the end for reference.
 
+## 未发布 / Unreleased
+
+修复执行桌面中的 Bot 看不到 Host 记忆文件的问题。客户端不需要修改；升级 Host 部署并重建 Box 后生效。
+
+Fix Bots in the execution desktop being unable to see Host memory files. Clients need no change; update the Host deployment and recreate Box.
+
+- **Host 记忆与执行桌面 / Host memory and the execution desktop**：Box 现在获得 `agents`、`agent-transcripts`、`user-memory`、`workflows`、`plugins`、`managed-skills` 六棵父目录的共享挂载，并同时支持 `/home/box/sand-data/<目录>` 与 `/data/runtime/host-data/<目录>`。因此新 Agent 会自动可见，不必逐个增加子代理挂载。启动前由 Host 镜像只创建缺失目录并设为 `1000:1000 0750`；`connector-secrets`、`model.env`、`auth.json`、`projects` 和内部令牌不暴露。备份和升级会拒绝缺失、额外、错误来源、错误子路径或只读的 Box 数据挂载，`host-data` 仍只归档一次。Box now receives shared parent mounts for `agents`, `agent-transcripts`, `user-memory`, `workflows`, `plugins` and `managed-skills`, under both `/home/box/sand-data/<tree>` and `/data/runtime/host-data/<tree>`. New Agents are therefore visible without per-Agent mounts. Before startup the Host image creates only missing directories and sets them to `1000:1000 0750`; `connector-secrets`, `model.env`, `auth.json`, `projects` and internal tokens remain hidden. Backup and update reject missing, extra, wrong-source, wrong-subpath or read-only Box data mounts, while `host-data` is still archived only once.
+- **验证 / Validation**：在本地 Docker Compose 2.40.3 实例上完成真实容器双向读写和相同 inode 验证：Host 写入后 Box 的两套路径都能立即读取，Box 创建的 Agent 目录也能被 Host 读取；敏感路径均不可见。部署数据初始化、普通卷、FNOS 风格 bind、旧 Box、部分/额外/错误/只读挂载、symlink 拒绝和单次 `host-data` 归档均有回归测试。A real local Docker Compose 2.40.3 deployment verified bidirectional writes and matching inodes: Host writes were immediately readable through both Box paths, Box-created Agent directories were readable by Host, and sensitive paths stayed hidden. Regression coverage includes data initialization, named volumes, FNOS-style binds, the legacy Box layout, partial/extra/wrong/read-only mounts, symlink refusal and single-archive `host-data` backup.
+
 ## ProkBot Plus 1.3.1 (2026-11-17)
 
 Host 部署工具修复：在 Docker 29 + Compose 2.40 上，`deploy.py backup` 和 `deploy.py update` 无法运行（[#4](https://github.com/ferretgeek/prokbot-plus/issues/4)）。另外升级了 GitHub 依赖提醒指出的几个依赖。客户端与 1.3.0 相同，不用重新生成。

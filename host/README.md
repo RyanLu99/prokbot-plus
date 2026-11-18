@@ -34,6 +34,8 @@ Box 归档校验通过后会被标记为 `grokbot-box-input:9d2ac1b`，Compose �
 
 同机部署备份 `host-data`、`box-home`、`box-workspace`；独立 Host 只有 `host-data`，另一台执行节点需单独备份 `gateway-data` 和两个桌面卷。备份目录只含卷归档与校验清单，**不含镜像、实例目录的 `.env`、宿主机系统或其他磁盘内容**。卷里的配对身份、模型凭据、聊天与工作区数据属于私密资料，备份不要公开。
 
+执行桌面的 Bot 需要读取 Host 的记忆、会话索引、用户记忆、工作流、插件和托管技能。Compose 只把 `runtime/host-data` 下这六棵目录的父目录挂进 Box，并同时提供 `/home/box/sand-data/<目录>` 和 `/data/runtime/host-data/<目录>` 两个路径；以后新增 Agent 不需要再改挂载。部署前只创建缺失目录并设为 `1000:1000 0750`，`connector-secrets`、`model.env`、`auth.json`、`projects` 和内部令牌不会暴露。`host-data` 仍只归档一次；Box 若缺少、增加或改错这些挂载，备份和升级会拒绝继续。
+
 手动备份会暂停正在运行的项目容器，结束后恢复原状态。`update` 先构建候选，再停止旧服务并备份，使构建期间写入的数据也在卷归档里。未纳入备份的嵌套挂载（例如 `/data/uploads`）会使操作中止。分机部署不是跨主机原子快照：需由操作者协调两端停止写入，并分别保存两台机器的归档。
 
 ```sh

@@ -14,7 +14,7 @@ is distributed for noncommercial purposes only, and identifies its
 modifications below. The noncommercial conditions also apply to everything
 ProkBot Plus adds; none of it is offered under terms that allow commercial use.
 
-Modifications made in ProkBot Plus (2026-11-07 to 2026-11-16)
+Modifications made in ProkBot Plus (2026-11-07 to 2026-11-18)
 --------------------------------------------------------------
 
 1. Windows x64 client (new)
@@ -177,6 +177,15 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-16)
     and checks nested ZIP/APK and gzip content before distribution.
     The portable iOS CLI regressions use explicit UTF-8 subprocess output.
 
+19. Host memory visibility in the execution desktop. host/release/compose.yaml
+    shares the six allowlisted parent data trees (agents, agent-transcripts,
+    user-memory, workflows, plugins and managed-skills) under both the original
+    agent-data and absolute Host-data paths. host/release/data_init.py creates
+    only missing trees and fixes their top-level metadata. host/release/backup.py
+    validates complete named-volume or bind mounts, rejects partial, extra,
+    wrong-source, wrong-subpath and read-only layouts, and still archives
+    host-data once. Sensitive top-level files and projects remain Host-only.
+
 Client tools update (2026-11-14): separate Android app and renderer versions,
 verify patched inputs in scratch, and publish independently checked client
 tool archives. Official programs and generated clients are not distributed.
@@ -203,6 +212,10 @@ Subpath) with index, so backup and update work on Docker 29 with Compose 2.40
 (item 17). Updated host/server/package-lock.json (hono, @hono/node-server,
 body-parser) and the bundled mac/patchers/desktop/node_modules (@electron/asar
 4.3.2 with glob and minimatch).
+
+Unreleased after 1.3.1 (2026-11-18): the execution desktop receives the
+allowlisted Host memory, transcript, user-memory, workflow, plugin and
+managed-skill trees described in item 19. Clients are unchanged.
 
 Third-party components
 ----------------------

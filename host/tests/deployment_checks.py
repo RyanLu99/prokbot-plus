@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 HOST = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HOST))
 import deploy
+import backup
 import platforms
 
 spec = importlib.util.spec_from_file_location('builder', HOST / 'release/build-docker.py')
@@ -96,6 +97,11 @@ class ComposeMountTests(unittest.TestCase):
         for service, (image, pairs) in specs.items():
             services[service] = {'image': image, 'volumes': [
                 {'type': 'volume', 'source': name, 'target': dest} for name, dest in pairs]}
+            if service == 'box':
+                services[service]['volumes'].extend(
+                    {'type': 'volume', 'source': 'host-data', 'target': target,
+                     'volume': {'subpath': str(backup.DATA_SOURCE_ROOT / tree)}}
+                    for target, tree in backup.BOX_DATA_TARGETS.items())
             for name, _ in pairs:
                 volumes[name] = {'name': 'demo_' + name}
                 if existing:
