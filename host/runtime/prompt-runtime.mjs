@@ -2,8 +2,20 @@ import { join } from 'node:path';
 import { readJson, writePrivate } from '../server/storage.mjs';
 import { promptDigest, promptId, promptRoles, validatePrompt } from '../server/prompt-settings.mjs';
 
+function memoryAccessDirective(memoryRoot) {
+  const root = memoryRoot.replace(/\/+$/, '') || '/';
+  return [
+    `Host memory access is live for this turn: agent memory is mounted at ${root}/agents and shared user memory at ${root}/user-memory.`,
+    'When asked to read, search, audit, clean, or summarize memory, use Read or Shell now and inspect <agent-id>/memory/profile.md and <agent-id>/memory/log/*.md, plus user-memory/by-agent/<agent-id>/profile.md and log/*.md when present.',
+    'Never repeat an earlier turn\'s "not mounted" or "not readable" conclusion without rechecking; Host upgrades and Box restarts can change access.',
+    'A missing monthly log means that log has no file yet, not that the memory volume is unavailable; report exact paths and errors when a check fails.',
+  ].join(' ');
+}
+
 /** Only base instructions are catalogued. Profile, memory, skills and user content stay in the original assembler. */
-export async function installLocalPromptPolicy(directory, library, { pollMs = 1000, revision = 'local' } = {}) {
+export async function installLocalPromptPolicy(directory, library, {
+  pollMs = 1000, revision = 'local', memoryRoot = process.env.SAND_DATA_ROOT ?? '/data/runtime/host-data',
+} = {}) {
   const settingsPath = join(directory, 'prompt-settings.json'), catalogPath = join(directory, 'prompt-catalog.json');
   let settings = { version: 1, entries: {} }, catalog = await readJson(catalogPath, { version: 1, entries: [] }), tail = Promise.resolve(), reading = false;
   let stopped = false;
@@ -54,8 +66,11 @@ export async function installLocalPromptPolicy(directory, library, { pollMs = 10
       const render = (role, original) => {
         id = observe(role, original); if (!id) return original;
         const selected = frozen[id]?.revisions?.at(-1)?.content;
-        if (selected === undefined) return original;
-        try { return validatePrompt(selected); } catch { return original; }
+        let rendered = original;
+        if (selected !== undefined) {
+          try { rendered = validatePrompt(selected); } catch { rendered = original; }
+        }
+        return role === 'parent' ? validatePrompt(`${rendered.trimEnd()}\n\n${memoryAccessDirective(memoryRoot)}`) : rendered;
       };
       render.recordAssembly = value => { assembly = value; publish(); };
       render.recordTools = values => {

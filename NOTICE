@@ -202,7 +202,9 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-18)
     only missing trees and fixes their top-level metadata. host/release/backup.py
     validates complete named-volume or bind mounts, rejects partial, extra,
     wrong-source, wrong-subpath and read-only layouts, and still archives
-    host-data once. Sensitive top-level files and projects remain Host-only.
+    host-data once. host/runtime/prompt-runtime.mjs also requires a live memory
+    access check in each parent turn instead of replaying a pre-upgrade access
+    failure. Sensitive top-level files and projects remain Host-only.
 
 Client tools update (2026-11-14): separate Android app and renderer versions,
 verify patched inputs in scratch, and publish independently checked client
