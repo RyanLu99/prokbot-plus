@@ -5,10 +5,10 @@ import { promptDigest, promptId, promptRoles, validatePrompt } from '../server/p
 function memoryAccessDirective(memoryRoot) {
   const root = memoryRoot.replace(/\/+$/, '') || '/';
   return [
-    `Host memory access is live for this turn: agent memory is mounted at ${root}/agents and shared user memory at ${root}/user-memory.`,
-    'When asked to read, search, audit, clean, or summarize memory, use Read or Shell now and inspect <agent-id>/memory/profile.md and <agent-id>/memory/log/*.md, plus user-memory/by-agent/<agent-id>/profile.md and log/*.md when present.',
-    'Never repeat an earlier turn\'s "not mounted" or "not readable" conclusion without rechecking; Host upgrades and Box restarts can change access.',
-    'A missing monthly log means that log has no file yet, not that the memory volume is unavailable; report exact paths and errors when a check fails.',
+    `Memory access is configured for this turn: agent memory is mounted at ${root}/agents and shared user memory at ${root}/user-memory.`,
+    'Use memory proactively whenever it can affect the answer, without waiting for the user to ask. The normal Memory sections may already include profile and recent facts; when you need older or omitted facts, inspect the corresponding files with Read or Shell on your own computer.',
+    'Do not repeat an earlier turn\'s "not mounted" or "not readable" result without rechecking in the current turn.',
+    'A missing monthly log means that no file has been recorded for that month yet, not that the entire memory volume is unavailable.',
   ].join(' ');
 }
 

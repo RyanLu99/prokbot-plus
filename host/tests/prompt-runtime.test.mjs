@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { installLocalPromptPolicy } from '../runtime/prompt-runtime.mjs';
 
-test('parent prompts require a live memory access check after Host upgrades', async t => {
+test('parent prompts preserve proactive memory retrieval and reject stale access conclusions', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'prompt-runtime-'));
   const previous = globalThis.__grokbotPromptPolicy;
   const runtime = await installLocalPromptPolicy(directory, {}, {
@@ -20,10 +20,13 @@ test('parent prompts require a live memory access check after Host upgrades', as
 
   const render = globalThis.__grokbotPromptPolicy.snapshot();
   const parent = render('parent', 'Original parent prompt');
-  assert.match(parent, /^Original parent prompt\n\nHost memory access is live for this turn:/);
+  assert.match(parent, /^Original parent prompt\n\nMemory access is configured for this turn:/);
   assert.match(parent, /agent memory is mounted at \/data\/runtime\/host-data\/agents/);
   assert.match(parent, /shared user memory at \/data\/runtime\/host-data\/user-memory/);
-  assert.match(parent, /Never repeat an earlier turn's "not mounted" or "not readable" conclusion/);
-  assert.match(parent, /A missing monthly log means that log has no file yet/);
+  assert.match(parent, /Use memory proactively whenever it can affect the answer, without waiting for the user to ask/);
+  assert.match(parent, /when you need older or omitted facts, inspect the corresponding files with Read or Shell/);
+  assert.match(parent, /Do not repeat an earlier turn's "not mounted" or "not readable" result/);
+  assert.match(parent, /A missing monthly log means that no file has been recorded for that month yet/);
+  assert.doesNotMatch(parent, /When asked to read, search, audit, clean, or summarize memory/);
   assert.equal(render('automation', 'Original automation prompt'), 'Original automation prompt');
 });
