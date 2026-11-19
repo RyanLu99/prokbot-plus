@@ -128,6 +128,7 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 - 客户端版本固定，官方出新版要等本项目适配，没有自动更新；
 - 效果取决于你选的模型；
 - 虚拟卡、外部消息草稿、通行密钥转发等官方功能已关闭，语音、推送、生图要自己准备服务商；
+- 官方网站上别人分享的 Bot（x.ai/bot/… 页面的「Add to Grok Bot」）不能添加，这些模板存在官方云端；Bot 只能在 Host 之间用 ZIP 分享；
 - 客户端没有代码签名：Windows 会有 SmartScreen 提示，iPhone 要自己签名，Android 要允许安装未知来源应用；
 - Windows 版的 Bot 能执行命令，但还不能操作鼠标键盘；
 - 修改官方客户端可能违反官方用户条款，风险自负。

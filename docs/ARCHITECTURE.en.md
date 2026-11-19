@@ -56,7 +56,7 @@ The patch tools copy bytes from the official files you provide (or that they dow
 | 🔁 Access from outside | IP address, Tailscale, an HTTPS reverse proxy or the built-in Tailcat | A domain, depending on the method |
 | ⛔ Telemetry, crash reports, automatic updates | Off; the patches are pinned to supported versions | — |
 
-Official features not provided: virtual cards, external message drafts, product feedback and passkey forwarding.
+Official features not provided: virtual cards, external message drafts, product feedback, passkey forwarding, and adding Bots shared on the official website ("Add to Grok Bot" on x.ai/bot/… pages: those templates live in the official cloud and download only with an official account).
 
 Added by upstream ProkBot: apps (one JSON file; see [app development](#app-development)), webhooks that start tasks, usage statistics, prompt management (with restore), per-model context settings, an admin web page (Chinese and English, light and dark, phone screens), a [split deployment](AI-INSTALL.en.md#split-host) and [volume backup and recovery](AI-INSTALL.en.md#volume-recovery).
 
@@ -225,6 +225,8 @@ The official iOS client is a React Native app. An injected dynamic library (Obje
 ### Skills, apps, sharing and collaboration
 
 The official skill catalog, app marketplace, Bot publishing and multi-Agent collaboration depend on official platforms. Each has a counterpart on the Host that keeps the official interface, with data from your Host. Code apps and webhooks plug into the official tools and automations.
+
+Bots and skills are published to your own Host, or exported and imported as ZIP files on the admin page's Sharing view to move them between Hosts. The desktop clients register only `grokbot-local://` links and leave the official `grokbot://` scheme alone (including the website's template links, `grokbot://app/v1/bot-template`), so they do not clash with an official client on the same computer.
 
 An app is one `grokbot-app` JSON file that declares code, a remote MCP server or skills; import and authorize it on the admin page. Code apps run on the execution computer with that user's file and network access. The full format and OAuth examples are in `host/server/application-guide.md`, the same guide Bots read when they write apps.
 

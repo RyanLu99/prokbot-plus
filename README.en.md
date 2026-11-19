@@ -128,6 +128,7 @@ The [latest release](https://github.com/ferretgeek/prokbot-plus/releases/latest)
 - client versions are pinned: a new official release has to be adapted first, and there are no automatic updates;
 - results depend on the model you choose;
 - some official features are off (virtual cards, external message drafts, passkey forwarding), and voice, push and image generation need your own providers;
+- Bots shared on the official website ("Add to Grok Bot" on x.ai/bot/… pages) cannot be added, because those templates live in the official cloud; Bots are shared between Hosts as ZIP files;
 - the clients are not code-signed: Windows shows a SmartScreen prompt, you sign the iPhone app yourself, and Android needs installs from unknown sources allowed;
 - on Windows the Bot can run commands but cannot yet control the mouse and keyboard;
 - patching the official clients may break the official terms of use; you do so at your own risk.

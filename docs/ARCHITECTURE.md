@@ -56,7 +56,7 @@ flowchart LR
 | 🔁 外网访问 | IP 地址、Tailscale、HTTPS 反向代理，或内置的 Tailcat | 视情况准备域名 |
 | ⛔ 遥测、错误上报、自动更新 | 已关闭，补丁固定在支持的版本 | — |
 
-未提供的原版功能：虚拟卡、外部消息草稿、产品反馈和通行密钥转发。
+未提供的原版功能：虚拟卡、外部消息草稿、产品反馈、通行密钥转发，以及添加官方网站上分享的 Bot（x.ai/bot/… 页面的「Add to Grok Bot」：模板存在官方云端，要用官方账号下载）。
 
 上游 ProkBot 新增的功能：应用（一个 JSON 文件，见[应用开发](#app-development)）、Webhook 触发任务、用量统计、提示词管理（可恢复原版）、按模型设置上下文、管理网页（中英文、深浅色、手机屏幕）、[分机部署](AI-INSTALL.md#split-host)和[卷备份恢复](AI-INSTALL.md#volume-recovery)。
 
@@ -225,6 +225,8 @@ Bot 做有风险的操作前，原版会问官方分类服务。这里改用你�
 ### 技能、应用、分享和协作
 
 原版的技能目录、应用市场、Bot 发布和多 Agent 协作都依赖官方平台。这里在 Host 上各做了一份，沿用原版界面，数据来自你的 Host。代码应用和 Webhook 接入了原版的工具和自动任务。
+
+Bot 和技能发布到自己的 Host，或在管理页「分享」导出、导入 ZIP，在 Host 之间传递。桌面客户端只注册 `grokbot-local://` 链接，不接管官方的 `grokbot://`（包括官方网站的模板链接 `grokbot://app/v1/bot-template`），以免和同一台电脑上的官方客户端冲突。
 
 开发时用一个 `grokbot-app` JSON 声明代码、远程 MCP 或技能，在管理页导入和授权。代码应用在执行电脑上运行，沿用该用户的文件和网络权限。完整格式与 OAuth 示例在 `host/server/application-guide.md`，这也是 Bot 写应用时读取的指南。
 
