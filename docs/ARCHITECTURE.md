@@ -132,7 +132,7 @@ flowchart LR
 | --- | --- |
 | `host/runtime/model-session.mjs` | 入口，按 `apiFormat`（`openai` / `openai-responses` / `anthropic`）分派 |
 | `host/runtime/model-routing.mjs` | 校验多服务/档案配置，解析默认或 Bot 覆盖路由及备用链 |
-| `host/runtime/openai-chat.mjs` | Chat Completions，地址后接 `/chat/completions` |
+| `host/runtime/openai-chat.mjs` | Chat Completions，地址后接 `/chat/completions`。兼容接口常见的差异照上游原来的方式宽松处理：`[DONE]` 和 `finish_reason` 有一个就算结束；`finish_reason` 是 `stop` 但带了工具调用时照常执行工具；工具参数是空字符串时，工具没有必填参数就按 `{}` 处理，有必填参数仍报错 |
 | `host/runtime/openai-responses.mjs` | Responses，地址后接 `/responses`，无状态调用 |
 | `host/runtime/anthropic-messages.mjs` | Messages，地址写根地址或 `/v1` 都可以 |
 | `host/runtime/model-common.mjs` | SSE 解析、错误归一、图片和文件转换、推理来源标记、可选参数回退 |
@@ -209,7 +209,7 @@ Bot 要在执行电脑或你的电脑上做有风险的操作时，原版会先�
 
 本项目的模型层要等整段回复结束，才把工具调用一次性交给 Harness，这样流中途出错重试时不会重复执行工具。但可靠性层 `host/runtime/reliability/tool-journal.mjs` 执行每个工具前要先把执行意图写入磁盘，几条消息同时启动时，谁先写完谁先发出。
 
-`host/runtime/reliability/tool-order.mjs`（本版本新增）记下每次回复里 `SendToUser` / `SendToAgent` 的书写顺序，让每条消息等上一条执行完再开始，其他工具照常并行；前一条始终没执行时最多等 15 秒，取消时立即停止等待。
+`host/runtime/reliability/tool-order.mjs`（本版本新增）记下每次回复里 `SendToUser` / `SendToAgent` 的书写顺序，让每条消息等上一条执行完再开始，其他工具照常并行；前一条始终没执行时最多等 15 秒，取消时立即停止等待。有的服务按序号生成调用 ID，两个同时进行的回复可能用到同一个 ID；这时这条消息不参与排序（一分钟后恢复），而不是让对话出错。
 
 如果上一步只有一个 `SendToUser` 纯文本调用、紧邻的 Host 工具回执明确成功，而下一次模型响应换了调用 ID 却只要求再发相同文本，适配层会在再次执行前以不可重试错误停止这一轮。此前已送达的消息和模型用量仍保留。这个判断不跨用户轮次，不按正文清理历史，不对附件、多工具步骤或没有成功回执的调用推断送达。
 
@@ -477,7 +477,7 @@ Windows 1.1.0 的 17 条 recipe 由 `windows/tools/desktop-recipes/` 从官方�
 | --- | --- |
 | Electron preload → 主进程 | `main.mjs`、`local-services.mjs` 的 RPC 探测同时检查受信窗口的主 frame、preload 的声明和已安装的可调用处理器。核对同步启动快照、调用参数、成功/失败回执及订阅/取消订阅；仅匹配方法名不足以判定兼容。 |
 | 界面 → Host 网关 | `gateway.mjs` 每个端口只回应一次 v3 `ready`；显式版本不符就关端口。进行中的请求 ID 在端口内去重，取消只作用于该请求，端口关闭后丢弃迟到回执。取消客户端请求不会撤销 Host 已执行的命令。 |
-| 配对、事件和设置 | `connection.mjs` 加密保存设备凭据，只在原 Host origin 或原 Tailcat 隧道重试，换地址须重新配对；请求拒绝重定向。`streams.mjs` 只有在 `/events` 返回 HTTP 200、响应体和 `text/event-stream` 后才报告在线；断线通知界面，重连携带 `Last-Event-ID`，401 表示设备需要重新认证。`client-persistence.mjs` 写入失败时保留原设置。 |
+| 配对、事件和设置 | `connection.mjs` 加密保存设备凭据，只在原 Host origin 或原 Tailcat 隧道重试，换地址须重新配对；请求拒绝重定向。`streams.mjs` 只有在 `/events` 返回 HTTP 200、响应体和 `text/event-stream` 后才报告在线；断线通知界面，重连携带 `Last-Event-ID`，401 表示设备需要重新认证。普通请求返回 401 时（例如连接器的 OAuth 授权过期），`gateway.mjs` 先用 `/connect/status` 核对设备凭据，只有它也返回 401 才断开并要求重新配对；没有这个接口的旧 Host 照原来的方式弹出配对窗口，不断开连接。`client-persistence.mjs` 写入失败时保留原设置；文件损坏时改名为 `local-client-persistence.json.damaged-<时间>` 后按空数据继续。 |
 
 <a id="desktop-validation"></a>
 #### 版本核对与测试

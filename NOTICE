@@ -253,6 +253,17 @@ ProkBot Plus 1.5.0 (2026-11-19): the web client (item 19). Generated web
 client bundles contain the official interface; they are built by users and
 installed only on their own Host, and are not distributed.
 
+ProkBot Plus 1.5.1 (2026-11-19): fixes from the upstream review of the merge
+request. host/runtime/openai-chat.mjs accepts either completion marker and
+tool calls after "stop"; host/runtime/model-common.mjs treats empty tool
+arguments as {} for tools without required parameters;
+host/runtime/reliability/tool-order.mjs leaves IDs reused by concurrent
+responses unordered; mac/clients/desktop/gateway.mjs checks the device
+credential before disconnecting on HTTP 401; client-persistence.mjs keeps a
+damaged profile under another name; main.mjs applies the saved theme before
+the first paint; codex-prompt.mjs, host/deploy.py and
+ios/patchers/ios/patch-app.py wording and version pins.
+
 Tool-call validation (2026-11-15):
 `host/runtime/openai-chat.mjs` and `host/runtime/openai-responses.mjs` omit
 malformed historical function calls and their outputs during replay, and reject

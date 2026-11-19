@@ -4,10 +4,11 @@
 
 ## 从哪里接手
 
-交接基线：2026-11-19。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.5.0..main` 和 `git status --short` 核对。
+交接基线：2026-11-19。上游 ProkBot 基于 `3e9fe8c`。下表列出可以下载的版本；之后的改动用 `git log v1.5.1..main` 和 `git status --short` 核对。
 
 | 层级 | 内容 |
 | --- | --- |
+| Plus Release `v1.5.1` | 上游 ProkBot 审阅合并请求（[Gitee PR #2](https://gitee.com/ahaduoduoduo/ProkBot/pulls/2)）时指出的问题：`host/runtime/openai-chat.mjs` 有 `[DONE]` 或 `finish_reason` 之一即算完成，`stop` 之后的工具调用照常执行；`model-common.mjs` 的 `parseToolArguments` 只对没有必填参数的工具把空参数当 `{}`；`reliability/tool-order.mjs` 遇到并发响应重复的调用 ID 时这一 ID 一分钟内不排序，两边都不失败。`mac/clients/desktop/gateway.mjs` 收到 401 后先查 `/connect/status`，确认设备被撤销才断开；`client-persistence.mjs` 把损坏的配置改名保留后用空配置启动；`main.mjs` 在首次绘制前应用保存的主题。另有 `codex-prompt.mjs` 措辞、`host/deploy.py recover` 的错误说明，以及 iOS 补丁从清单读取版本。Android 和网页版与 `v1.5.0` 相同。 |
 | Plus Release `v1.5.0` | 网页版：`web/patchers/patch.mjs` 用 Android 的 Windows 输入、recipe 和界面补丁生成界面包（`grokbot-web-bundle/v1`），`--upload` 经管理 API 安装；`host/server/web-client.mjs` 按包内清单校验、整体替换，只向已登录的浏览器提供界面包；`grokbot_web` Cookie 必须配合 `x-grokbot-web: 1` 和同源 Origin，设备平台为 `web`，没有桌面执行权限；Host 在 noVNC 页面注入电脑画面桥接；`web/client/` 代替 Android 外壳的原生接口。与 Android 共用的 `compat.js` 补上 Safari 缺少的 ResizeObserver 能力，`bridge.js` 的深链接等 Bot 列表出现后再打开。Release 增加第六个工具包 `prokbot-plus-web.zip`。Windows、Mac、iOS 客户端与 `v1.4.0` 相同。 |
 | Plus Release `v1.4.0` | 按 Bot 的主/备模型路由与上下文压缩（[PR #2](https://github.com/ferretgeek/prokbot-plus/pull/2)，@jun9100）：`host/runtime/model-routing.mjs` 解析服务、档案、默认路由和 Bot 路由；`model-session.mjs` 在尚未输出时按顺序换备用档案，本轮剩余步骤留在备用上；`host-summarize.mjs` 提供手动压缩（`POST /admin/api/agents/:id/summarize`）。旧配置在首次从新模型页保存前保持旧格式，`routingMigrated` 表示仍是旧格式，`legacyAdaptiveRouting` 表示旧配置用过按任务难度路由（Jev），只有这种情况会提示 Jev 并要求确认。客户端与 `v1.3.0` 相同。 |
 | Plus Release `v1.3.1` | Host 部署工具修复（[#4](https://github.com/ferretgeek/prokbot-plus/issues/4)）：`host/release/backup.py` 用 `index` 读取 `docker inspect` 原始 JSON 中可能省略的键，Docker 29 + Compose 2.40 上的 `backup` 和 `update` 恢复正常。依赖提醒涉及的锁文件也已更新；客户端与 `v1.3.0` 相同。 |
@@ -65,6 +66,8 @@ foreach ($source in $windows, $fallback) {
 2026-11-18 发布 `v1.4.0` 前复验：Host 176 项通过、1 项仅限 Linux 的用例跳过；Windows 28/28、共享桌面 59/59、Android 58/58（含 1.1.0 原包）、CI 工具 45/45 及 Python 21 项；Windows 和 Android 的 `--verify-only` 对 1.1.0、0.71.2 两个原包都通过；管理页浏览器 11/11（含两种旧配置的迁移提示）。另在 Docker 29.1.3 + Compose 2.40.3 上用单独的项目名、端口、卷和镜像标签起了测试实例，用真实 Anthropic Messages 模型验收：先用 `v1.3.1` 的镜像配置单模型并完成普通对话和工具对话；换成 PR #2 的镜像后旧对话可读，旧配置照常对话；不确认迁移的保存返回 409；主模型不可达（`127.0.0.1:9`）加真实备用时，一轮两次工具调用只记 1 次切换；默认路由的 Bot 正常；空闲 Bot 手动压缩 8 秒完成且仍记得先前的命令，运行中返回 409。发布提交在同一实例重建镜像后复测：迁移标记正确，两步工具调用仍只记 1 次切换，默认路由正常。Host 日志中的 `Ignoring exec stream shutdown during detached drain` 是 INFO，生产实例同样常见。生产 Host 尚未升级到 `v1.4.0`。
 
 2026-11-19 发布 `v1.5.0` 前复验：Host 183 项通过、1 项仅限 Linux 的用例跳过（含网页版路由测试）；Windows 28/28、共享桌面 59/59、Android 59/59（含 1.1.0 原包）、网页版 4/4（含 1.1.0 和 0.71.2 原包）、CI 工具 45/45 及 Python 21 项。Windows、Android 和网页版的 `--verify-only` 对 1.1.0、0.71.2 两个原包都通过。用发布前的代码重新生成 1.1.0 和 0.71.2 两个界面包，`web/tests/browser-flows.py` 在 8 种设备尺寸上各 8/8 通过（Playwright 的 Chromium、Firefox、WebKit；模拟的设备尺寸，不是真机）。另在一台真实 Linux 服务器上用单独的项目名、端口、卷和镜像标签起了测试实例，验证了命令行和管理页上传界面包、局域网 http 登录、真实模型对话、Bot 在自己的电脑上操作并发回截图，以及电脑和 iPhone 尺寸下的电脑实时画面；结束后删除了测试实例的容器、卷、镜像和目录。生产 Host 未改动，尚未升级到 `v1.5.0`。没有在 iPhone、iPad、Android 真机的浏览器上测试；http 地址下麦克风、听写和通知按浏览器规则不可用。`android/tests/browser-flows.py`（Android 外壳的浏览器测试）的选择器只匹配 0.71.2 界面，1.1.0 界面需要另行适配。
+
+2026-11-19 发布 `v1.5.1` 前复验：Host 185 项通过、1 项仅限 Linux 的用例跳过；Windows 28/28、共享桌面 62/62、Android 59/59（含 1.1.0 原包）、网页版 4/4（含 1.1.0 和 0.71.2 原包）、CI 工具 45/45 及 Python 21 项；Windows recipe 可逐字节重现，Windows、Android 和网页版的 `--verify-only` 对 1.1.0、0.71.2 两个原包都通过。本轮只有自动测试：没有在真实服务器上重建镜像，也没有在 Windows 或 Mac 上实测新的 401 处理、配置改名和启动主题。Android 和网页版自己的连接层没有改，收到 401 时仍按原方式提示重新配对。
 
 ## 运维与发布
 
