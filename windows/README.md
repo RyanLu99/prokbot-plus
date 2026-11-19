@@ -1,14 +1,14 @@
-# ProkBot Plus Windows Patch
-
-为 Grok Bot 1.1.0 Windows x64 客户端连接自己的 Host。需要 Windows 10/11 x64、Node.js 22.12+，以及完整的仓库（共用 `mac/` 中的客户端代码和补丁工具）。
-
-完整的部署步骤见 [AI 部署手册](../docs/AI-INSTALL.md#91-windows-1011-x64)，实现原理见[技术文档](../docs/ARCHITECTURE.md#windows-客户端本版本新增)。
+# ProkBot Plus Windows 补丁
 
 [English](README.en.md)
 
+为 Grok Bot 1.1.0 Windows x64 客户端连接自己的 Host。需要 Windows 10/11 x64、Node.js 22.12+，以及完整的仓库（共用 `mac/` 中的客户端代码和补丁工具）。
+
+完整的部署步骤见[部署手册](../docs/AI-INSTALL.md#client-packages)，实现原理见[技术文档](../docs/ARCHITECTURE.md#windows-client)。
+
 ## 使用
 
-推荐使用未经修改的 [Windows x64 **1.1.0** 原版](patchers/desktop/supported.json)，即 2026-11-14 核对时官方稳定通道提供的版本；1.1.0 用不了时再[回退到 0.71.2](#回退到-0712)。官方网站现在提供的是更新的 1.2.3（2026-11-19 核对），本项目尚未适配，不要用它；省略 `--source` 时工具会自动下载 1.1.0。其他版本或改动过的安装包会在输入校验时被拒绝，不会进入配对。ProkBot Plus 的发布版本号与 Grok Bot 版本无关。原版安装包只作为输入，无需运行，也不影响已安装的官方客户端。
+推荐使用未经修改的 [Windows x64 **1.1.0** 原版](patchers/desktop/supported.json)，用不了再[回退到 0.71.2](#回退到-0712)。官方网站现在提供的是 1.2.3（2026-11-19 核对），本项目尚未适配，不要用它；省略 `--source` 时工具会自动下载 1.1.0。其他版本或改动过的安装包会在输入校验时被拒绝，不会进入配对。ProkBot Plus 的发布版本号与 Grok Bot 版本无关。原版安装包只作为输入，无需运行，也不影响已安装的官方客户端。
 
 在仓库根目录执行：
 
@@ -68,8 +68,8 @@ $old = Join-Path $env:LOCALAPPDATA 'Programs\Grok Bot Local'
 - `patchers/desktop/0.71.2/`：回退版本 0.71.2 的固定输入和 recipe，Windows 回退和 Android 的 0.71.2 界面共用。补丁按 `supported.json` 中的大小和 SHA-256 识别 `--source` 的版本，新增回退版本时按版本号建同样的目录。`tools/port-desktop-recipes.mjs` 由同一版本的 Mac recipe 和两个平台的原版生成这组 recipe，并校验每段复制内容的结构一致。
 - `installer/`：安装器源码（仅 Go 标准库），`go build -trimpath -ldflags="-H=windowsgui -s -w" -o ../dist/installer/grokbot-setup-stub.exe .`
 - `dist/network/grokbot-tailcat.exe`：`python host/network/build-tailcat.py --target windows-amd64 --output windows/dist/network`
-- 测试：`node --test "windows/tests/*.test.mjs"`
+- 测试：`node --test "windows/tests/*.test.mjs"`；recipe 和安装器的原理见[技术文档](../docs/ARCHITECTURE.md#windows-client)。
 
 ## 许可与支持
 
-仅限非商业使用，见 [LICENSE](../LICENSE)。本项目多数代码由 AI 辅助生成。
+仅限非商业使用，见 [LICENSE](../LICENSE)。本项目多数代码由 AI 辅助编写。

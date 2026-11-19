@@ -11,10 +11,9 @@ ProkBot Plus 是 ProkBot（https://gitee.com/ahaduoduoduo/ProkBot ，基于提�
 相对上游新增了 Windows x64 客户端、Android 客户端、网页版、Anthropic Messages 和 OpenAI Responses 两种模型接口，以及一批修复。
 
 用户面向的文档：
-- `docs/HANDOFF.md` / `docs/HANDOFF.en.md`：接手时先核对发布版、主分支与未提交候选，查看修改和验证入口；
 - `README.md`；
 - `docs/AI-INSTALL.md`（部署手册）；
-- `docs/ARCHITECTURE.md`（技术文档）；
+- `docs/ARCHITECTURE.md`（技术文档，含测试、依赖官方原包的测试开关和支持新官方版本的步骤）；
 - `host/`、`mac/`、`windows/`、`ios/`、`android/`、`web/` 各自的 `README.md`，随对应的发布包分发。Host 的离线构建、备份、分开部署和应用开发都写在 `host/README.md`，iOS 签名写在 `ios/README.md`。
 
 改代码前先读技术文档。`host/server/application-guide.md` 是运行时文件，Bot 编写应用时会读取它，不要当成普通文档删改。
