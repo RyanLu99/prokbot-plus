@@ -16,7 +16,7 @@
 | Plus Release `v1.2.0` | 五个平台工具 ZIP 和 `SHA256SUMS.txt`。Windows 补丁接受官方 1.1.0：`windows/tools/desktop-recipes/` 生成 recipe，`mac/clients/desktop/` 增加按边注册、听写、搜索转接等 1.1.0 接口；0.71.2 输入移到 `windows/patchers/desktop/0.71.2/` 供 Android 使用。Host：`host/deploy.py`、`host/release/` 的备份、镜像识别和恢复；`host/runtime/` 的三种模型协议、流式响应和工具顺序；`host/server/`、`host/tools/host-admin.mjs` 的管理页和 CLI；`host/bench/` 容量测量。 |
 | Plus Release `v1.1.0` (`43c6d59`) | 客户端工具发布，没有升级 Host；Windows 补丁仍要求 0.71.2。 |
 
-Windows x64 补丁输入是 **1.1.0**；Mac ARM64 是 **0.71.2**；iOS 是 **1.16.0 (23152)**；自开发 Android 外壳是 **1.1.0 (10100)**，界面默认取自 Windows 1.1.0。Windows 和 Android 都可回退到 **0.71.2**。Host 输入为 `d0a4baa`，执行桌面为 `9d2ac1b`（`linux/amd64`）。截至 2026-11-14 的官方桌面版本是 **1.1.0**；Mac 1.1.0 尚未适配。
+Windows x64 补丁输入是 **1.1.0**；Mac ARM64 是 **0.71.2**；iOS 是 **1.16.0 (23152)**；自开发 Android 外壳是 **1.1.0 (10100)**，界面默认取自 Windows 1.1.0。Windows 和 Android 都可回退到 **0.71.2**。Host 输入为 `d0a4baa`，执行桌面为 `9d2ac1b`（`linux/amd64`）。2026-11-19 核对时官方桌面版本已是 **1.2.3**（Windows、Mac），iOS 商店是 1.26.0；本项目尚未适配 1.2.3，Mac 也还没有适配 1.1.0。官方另有 Intel Mac（`darwin-x64`）安装包，本项目没有支持（[#6](https://github.com/ferretgeek/prokbot-plus/issues/6)）。
 
 ## 修改入口
 

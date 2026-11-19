@@ -459,7 +459,7 @@ iOS 注入库的网络层另有一项测试，要在装了 Xcode 命令行工具
 <a id="desktop-compatibility"></a>
 ### 桌面版本与兼容性
 
-Windows x64 推荐 **1.1.0**，用不了时回退到 **0.71.2**；Android 所用的桌面界面同样推荐 1.1.0、可回退 0.71.2；Mac ARM64 仍为 **0.71.2**；Android 外壳单独编号（[版本表](../README.md#client-versions)）。2026-11-14，[Windows](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) 和 [Mac](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) 通道报 **1.1.0**。[固定快照](https://github.com/ferretgeek/prokbot-plus/blob/a868918f4e2f64ab6529b3afaf92dd6019235efe/ci/official-snapshot.json)中的 `build` 是构建标识，`observedArchiveSha256` 和 `observedAsarSha256` 分别是完整 EXE/DMG 和包内 ASAR 的实算摘要，不是构建白名单。当日[官方更新日志](https://x.ai/changelog/bot)只到 **1.0.1**，未列出 1.0.3、1.1.0 的功能差异。
+Windows x64 推荐 **1.1.0**，用不了时回退到 **0.71.2**；Android 所用的桌面界面同样推荐 1.1.0、可回退 0.71.2；Mac ARM64 仍为 **0.71.2**；Android 外壳单独编号（[版本表](../README.md#client-versions)）。2026-11-14，[Windows](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) 和 [Mac](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) 通道报 **1.1.0**。[固定快照](https://github.com/ferretgeek/prokbot-plus/blob/a868918f4e2f64ab6529b3afaf92dd6019235efe/ci/official-snapshot.json)中的 `build` 是构建标识，`observedArchiveSha256` 和 `observedAsarSha256` 分别是完整 EXE/DMG 和包内 ASAR 的实算摘要，不是构建白名单。当日[官方更新日志](https://x.ai/changelog/bot)只到 **1.0.1**，未列出 1.0.3、1.1.0 的功能差异。2026-11-19 两个通道已报 **1.2.3**，Windows 1.2.3 安装包的 Anysphere Authenticode 签名有效；本项目尚未适配 1.2.3，补丁仍只接受上述固定版本。最新观测记录在 [`ci/official-snapshot.json`](../ci/official-snapshot.json)，其中 Mac 1.2.3 只记录了整个 DMG 的摘要，没有解包测量 ASAR。
 
 1.0.3 的每个平台有 10 个旧 recipe 源路径消失，余下 6 个内容改变；两端的 preload 也都不同于 1.0.1。原包记录如下：
 

@@ -4,6 +4,11 @@
 
 Versions start at ProkBot Plus 1.0.0. Upstream ProkBot releases are listed at the end for reference.
 
+## 未发布 / Unreleased
+
+- **官方版本记录 / Official release record**：官方 Windows 和 Mac 客户端已更新到 1.2.3，iOS 商店是 1.26.0（2026-11-19 核对）。首页版本表、徽章、技术文档和交接文档已更新；本项目尚未适配 1.2.3，补丁仍只接受 1.1.0 和 0.71.2，Windows 说明提醒不要用官方网站上的最新安装包。The official Windows and Mac clients are now at 1.2.3 and the iOS store at 1.26.0 (checked November 19, 2026). The homepage version table and badges, the architecture notes and the handoff are updated. This project does not support 1.2.3 yet; the patches still accept only 1.1.0 and 0.71.2, and the Windows README warns against the latest installer on the official site.
+- **问题模板 / Issue templates**：问题报告加入「网页版」选项，并引导功能请求改用功能建议模板；功能建议模板增加「相关部分」。The bug report form gains a web client option and points feature requests to their own form, which now asks for the related part.
+
 ## ProkBot Plus 1.5.0 (2026-11-19)
 
 新增网页版：在 Windows、Mac、Linux 电脑，Android 和 iPhone 手机，iPad 和安卓平板的浏览器里使用自己 Host 上的 Bot，不用安装客户端，排版随屏幕自适应。要升级 Host 才能用。Windows、Mac、iOS 客户端与 1.4.0 相同；Android 客户端随之修了一个问题（点击通知冷启动时偶尔打不开对应的 Bot），重新生成 APK 后生效，不重新生成也能照常使用。
