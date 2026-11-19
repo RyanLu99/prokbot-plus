@@ -24,7 +24,9 @@ The tool downloads and verifies the official `Grok_Bot_1.1.0_Setup.exe` and writ
 | `GrokBotLocal-1.1.0-x64-portable.zip` | Portable archive; extract and run |
 | `GrokBotLocal-1.1.0-x64-Setup.exe` | Per-user installer into `%LOCALAPPDATA%\Programs\Grok Bot Local`, no administrator rights |
 
-Open the client and enter your Host address and six-character pairing code. To use an existing original installer, `app-64.7z` or installed original folder, pass `--source`; the tool recognizes the version by its digest. `--no-installer` builds the portable outputs only.
+Open the client and enter your Host address and 6-character pairing code. To use an existing original installer, `app-64.7z` or installed original folder, pass `--source`; the tool recognizes the version by its digest. `--no-installer` builds the portable outputs only.
+
+<p align="center"><img src="../docs/images/windows-connect.png" alt="First connection in the Windows client: enter the Host address and pairing code (Chinese interface)" width="320"></p>
 
 ### Falling back to 0.71.2
 

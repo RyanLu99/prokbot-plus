@@ -22,9 +22,24 @@
 </div>
 
 <p align="center">
-  <img src="docs/images/windows-chat.png" alt="Windows client: the Bot looks up when to see the red autumn leaves at Fragrant Hills, cites its sources, and also paints a 16:9 watercolor" width="880">
+  <img src="docs/images/hero-en.jpg" alt="Three clients: on the left the Windows client, where the Bot searched the web and drew a picture; in the middle the web client in a browser; on the right a chat in the Android app">
 </p>
-<p align="center"><sub>The Windows client: the Bot looks something up, cites its sources and draws a picture. (Screenshots show the Chinese UI; the apps also support English.)</sub></p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/card-search.jpg" alt="Windows client: the Bot looks up when to see the red autumn leaves at Fragrant Hills, lists its sources and paints a watercolor"><br><b>Web search and images</b><br><sub>Sources are listed, and pictures appear right in the chat.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/card-approve.jpg" alt="Before the Bot runs a command on the Windows PC, a card offers Always allow, Allow once and Never"><br><b>Commands on your own PC</b><br><sub>In the Windows client, the Bot asks first.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/card-phone-en.jpg" alt="The Bot list on a phone and a chat with Trip Planner, where the Bot lays out a weekend in Edinburgh as a table"><br><b>On your phone</b><br><sub>Laid out like the official phone app; the Android app and the web client share this interface.</sub></td>
+    <td valign="top"><img src="docs/images/card-tablet-en.jpg" alt="The web client on an iPad in landscape: the Bot list on the left and a Python script from Code Helper on the right"><br><b>Tablets and any browser</b><br><sub>The web client adapts to the screen; sign in with a pairing code.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/card-models-en.jpg" alt="The chat model page on the Host admin site: two model services, anthropic and openai-responses, and two model profiles"><br><b>Your own models</b><br><sub>Anthropic, OpenAI Responses or OpenAI Chat APIs, with a model and fallbacks per Bot.</sub></td>
+    <td valign="top"><img src="docs/images/card-pair-en.jpg" alt="First connection in the Android app: enter the Host address and the 6-character pairing code"><br><b>Pair with a code</b><br><sub>Enter the Host address and a 6-character code from the admin page.</sub></td>
+  </tr>
+</table>
+<p align="center"><sub>All screenshots use demo data. The Windows screenshots show the Chinese interface; the clients also support English.</sub></p>
 
 ## What it is
 
@@ -84,23 +99,7 @@ ProkBot Plus has its own version numbers; see the [latest release](https://githu
 | Mac | Apple Silicon | Patch from upstream, still on the official 0.71.2; this project has not tested it on a real Mac. |
 | iPhone / iPad | Your own decrypted IPA and signing certificate | Patch from upstream; this project has not tested it on a real device. |
 
-<table>
-  <tr>
-    <td width="36%"><img src="docs/images/windows-connect.png" alt="First connection in the Windows client: enter the Host address and pairing code"></td>
-    <td><img src="docs/images/windows-approve.png" alt="Before the Bot runs a command on the Windows PC, a card offers Allow once, Always allow and Never"></td>
-  </tr>
-  <tr>
-    <td><sub>Windows: enter the Host address and 6-digit pairing code the first time.</sub></td>
-    <td><sub>The Bot asks before it runs a command on your PC.</sub></td>
-  </tr>
-</table>
-
 <a id="android-client"></a><a id="web-client"></a>
-<p align="center">
-  <img src="docs/images/phone-en.png" alt="The phone interface: the Bot list on the left and a chat with Trip Planner on the right, where the Bot lays out a weekend in Edinburgh as a table" width="620">
-</p>
-<p align="center"><sub>The phone interface (demo data). The Android app and the web client share it: the official desktop interface, rearranged for phones.</sub></p>
-
 **The Android app** does not modify the official Android app (it is tamper-protected). It puts the official desktop interface into a shell written by this project. You can watch the Bot's computer live and take control, and notifications work without Google push. You sign the APK with your own key.
 
 **The web client** is built on a computer and uploaded to your Host. Then open `<Host address>/web/` in a browser on any device and enter a pairing code; you can also add it to the home screen. Use HTTPS when you access it from outside. See the [web client guide](web/README.en.md).

@@ -22,9 +22,24 @@
 </div>
 
 <p align="center">
-  <img src="docs/images/windows-chat.png" alt="Windows 客户端：Bot 联网查询香山红叶的观赏时间并给出来源，同时画了一张 16:9 的水彩画" width="880">
+  <img src="docs/images/hero-zh.jpg" alt="三端截图：左边是 Windows 客户端，Bot 联网查资料并画了一张图；中间是浏览器里的网页版；右边是 Android App 上的对话">
 </p>
-<p align="center"><sub>Windows 客户端：Bot 联网查资料、给出处，再画一张图。</sub></p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/card-search.jpg" alt="Windows 客户端：Bot 联网查香山红叶的观赏时间，列出来源，再画一张水彩画"><br><b>联网查资料、画图</b><br><sub>列出来源，图直接出现在对话里。</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/card-approve.jpg" alt="Bot 要在 Windows 电脑上执行命令前，弹出始终允许、允许一次、从不的确认卡片"><br><b>在你的电脑上执行命令</b><br><sub>Windows 客户端，执行前先问你。</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/card-phone-zh.jpg" alt="手机上的 Bot 列表，以及和「旅行规划」的对话，Bot 用表格排了杭州两日行程"><br><b>手机上用</b><br><sub>按官方手机版排版，Android App 和网页版共用这套界面。</sub></td>
+    <td valign="top"><img src="docs/images/card-tablet-zh.jpg" alt="iPad 横屏打开网页版：左边是 Bot 列表，右边是代码助手写的 Python 脚本"><br><b>平板和任何浏览器</b><br><sub>网页版随屏幕自动排版，用配对码登录。</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/card-models-zh.jpg" alt="Host 管理页的对话模型：anthropic 和 openai-responses 两个模型服务，以及两个模型档案"><br><b>用你自己的模型</b><br><sub>Anthropic、OpenAI Responses、OpenAI Chat 三种接口，每个 Bot 可以单独选模型和备用模型。</sub></td>
+    <td valign="top"><img src="docs/images/card-pair-zh.jpg" alt="Android App 首次连接：填写 Host 地址和 6 位配对码"><br><b>配对码连接</b><br><sub>填 Host 地址和管理页生成的 6 位配对码就能连上。</sub></td>
+  </tr>
+</table>
+<p align="center"><sub>截图均为演示数据。</sub></p>
 
 ## 这是什么
 
@@ -84,23 +99,7 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 | Mac | Apple Silicon | 上游已有的补丁，仍用官方 0.71.2，本项目没有 Mac 真机测试。 |
 | iPhone / iPad | 自备已解密的 IPA 和签名证书 | 上游已有的补丁，本项目没有真机测试。 |
 
-<table>
-  <tr>
-    <td width="36%"><img src="docs/images/windows-connect.png" alt="Windows 客户端首次连接：填写 Host 地址和配对码"></td>
-    <td><img src="docs/images/windows-approve.png" alt="Bot 要在 Windows 电脑上执行命令前，弹出允许一次、始终允许、从不的确认卡片"></td>
-  </tr>
-  <tr>
-    <td><sub>Windows：第一次打开时填 Host 地址和 6 位配对码。</sub></td>
-    <td><sub>Bot 要在你的电脑上执行命令时，先问你。</sub></td>
-  </tr>
-</table>
-
 <a id="android-客户端"></a><a id="web-client"></a>
-<p align="center">
-  <img src="docs/images/phone-zh.png" alt="手机上的界面：左边是 Bot 列表，右边是和「旅行规划」的对话，Bot 用表格排了杭州两日行程" width="620">
-</p>
-<p align="center"><sub>手机上的界面（演示数据）。Android App 和网页版用的是同一套界面，取自官方桌面版，按手机重新排版。</sub></p>
-
 **Android App** 不改官方 Android 版（它有防篡改保护），而是把官方桌面版的界面装进本项目写的外壳：能看 Bot 电脑的实时画面并接手操作，收通知不依赖 Google 推送。APK 用你自己的密钥签名。
 
 **网页版** 在电脑上生成界面包、上传到 Host 后，任何设备的浏览器打开 `Host 地址/web/` 输入配对码就能用，也能添加到主屏幕。从外网访问请用 HTTPS。详见[网页版说明](web/README.md)。

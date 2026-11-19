@@ -15,7 +15,7 @@ python3 release/patch-ios.py \
   --bundle-id dev.grokbot.local
 ```
 
-Outputs `GrokBot-Local-resignable.ipa`, `GrokBotLocal.dylib` and `extension-signing.json`. Sign and install it with your own tools as described below, then enter your Host address and six-character pairing code.
+Outputs `GrokBot-Local-resignable.ipa`, `GrokBotLocal.dylib` and `extension-signing.json`. Sign and install it with your own tools as described below, then enter your Host address and 6-character pairing code.
 
 Push notifications use APNs or Bark, configured in the Host console. Enable realtime voice in the app settings.
 

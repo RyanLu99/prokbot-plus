@@ -38,7 +38,7 @@ The patch tools copy bytes from the official files you provide (or that they dow
 
 | Feature | How it works here | What you need |
 | --- | --- | --- |
-| 🔁 Sign-in | No account. The admin page creates a 6-digit pairing code; a client enters the Host address and the code | — |
+| 🔁 Sign-in | No account. The admin page creates a 6-character pairing code; a client enters the Host address and the code | — |
 | 🔁 Host and execution computer | The Host is built for the server's architecture; the execution desktop stays official | amd64 / arm64 Linux; the amd64 desktop can run on its own machine |
 | 🔁 Chat models | Several model services and profiles in three API formats; the default route or a per-Bot route sets the model, reasoning effort and fallback order | Model API address and key |
 | 🟢 Computer and browser use, memory, context compaction, scheduled tasks, approvals, human takeover | Official behavior, using your model and local timers | A model with image input to operate computers |

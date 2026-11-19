@@ -32,7 +32,7 @@ The tool downloads and verifies the official `Grok_Bot_1.1.0_Setup.exe` (the sam
 
 If the 1.1.0 interface does not work for you, add `--version 0.71.2` to use the 0.71.2 interface (it downloads `Grok_Bot_0.71.2_Setup.exe`), or pass a downloaded 0.71.2 installer with `--source`; the tool recognizes the version by its digest. Both interfaces produce the same APK filename, so add `--force` to replace the previous output or pick another folder with `--output`. The two APKs share the shell and signing key and install over each other without losing the pairing.
 
-Copy the APK to the phone and install it (allow "Install unknown apps"), or use `adb install -r`. Open it and enter the Host address and the six-character pairing code. A paired phone retries only its original Host origin. If the hostname, scheme, or port changes, get a fresh code from the new Host. Do not uninstall the app to repair pairing.
+Copy the APK to the phone and install it (allow "Install unknown apps"), or use `adb install -r`. Open it and enter the Host address and the 6-character pairing code. A paired phone retries only its original Host origin. If the hostname, scheme, or port changes, get a fresh code from the new Host. Do not uninstall the app to repair pairing.
 
 <p align="center"><img src="../docs/images/android-connect-en.png" alt="First-time pairing on Android: enter the Host address and pairing code" width="240"></p>
 

@@ -12,7 +12,7 @@ The complete deployment steps are in the [deployment guide](../docs/AI-INSTALL.e
 node patchers/desktop/patch.mjs
 ```
 
-Automatically downloads and verifies the 0.71.2 Apple Silicon original, then generates `output.noindex/Grok Bot.app`. Move it into Applications and enter your Host address and six-digit pairing code.
+Automatically downloads and verifies the 0.71.2 Apple Silicon original, then generates `output.noindex/Grok Bot.app`. Move it into Applications and enter your Host address and 6-character pairing code.
 
 The official Mac app has moved to 1.2.3 (checked November 19, 2026), but this patch stays on 0.71.2: the Mac app is a separate package that needs its own patch and testing of installation, signing and local graphical control on a Mac, which the maintainers don't have. 0.71.2 can still be downloaded from the official address, and the patcher checks its full digest.
 
