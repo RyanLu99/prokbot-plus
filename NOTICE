@@ -15,7 +15,7 @@ modifications below. The noncommercial conditions also apply to everything
 ProkBot Plus adds; none of it is offered under terms that allow commercial use.
 CHANGELOG.md lists the changes by release.
 
-Modifications made in ProkBot Plus (2026-11-07 to 2026-11-19)
+Modifications made in ProkBot Plus (2026-11-07 to 2026-11-20)
 --------------------------------------------------------------
 
 1. Windows x64 client (new)
@@ -50,6 +50,12 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-19)
    - host/runtime/host-computers.mjs, native-desktop.mjs, codex-prompt.mjs and
      host/server/desktop-capabilities.mjs: the Host recognizes Windows
      computers and withholds desktop execution from phones and browsers.
+   - Intel macOS (experimental): mac/patchers/desktop/x64/ pins the official
+     0.71.2 Intel build and holds recipes ported from the Apple Silicon ones
+     (windows/tools/port-desktop-recipes.mjs --platform mac); patch.mjs picks
+     the build for the Mac's chip, native-helper.mjs accepts the Intel copy
+     of the computer helper, and mac/dist/network/x64/grokbot-tailcat is
+     built by host/network/build-tailcat.py --target darwin-amd64.
 
 3. Android client (new)
    - android/shell/: Android shell app (Kotlin, no third-party libraries):

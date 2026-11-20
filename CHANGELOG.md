@@ -4,10 +4,11 @@
 
 Versions start at ProkBot Plus 1.0.0; upstream ProkBot releases are listed at the end. Full notes for each version are in its [release](https://github.com/ferretgeek/prokbot-plus/releases) and the commit history.
 
-## 未发布 / Unreleased
+## ProkBot Plus 1.6.0 (2026-11-20)
 
-只改文档和仓库内容，程序不变。Documentation and repository housekeeping only; no program changes.
+Mac 补丁增加 Intel 芯片（实验），首页和文档整理。只有 Mac 补丁有程序变化，Host、Windows、Android、网页版和 iOS 与 1.5.1 相同。Experimental Intel Mac support, plus homepage and documentation work. Only the Mac patch changes; Host, Windows, Android, web and iOS are the same as 1.5.1.
 
+- **Intel Mac（实验）/ Intel Macs (experimental)**：Mac 补丁按本机芯片选用官方 0.71.2 的 Apple 芯片版或 Intel 版，`--arch` 可以指定，给 DMG 时按大小识别。Intel 版的 recipe 由 Apple 芯片版对齐移植，加进去的代码完全相同；另外编译了 x86_64 的 Tailcat。只在 Windows 上验证了 recipe 能用在 Intel 原版上，没有在 Intel Mac 上测试（[#6](https://github.com/ferretgeek/prokbot-plus/issues/6)）。The Mac patcher picks the official 0.71.2 Apple Silicon or Intel build for the Mac's chip (`--arch` overrides; a DMG is recognized by size). The Intel recipes are aligned ports that add exactly the same code, with an x86_64 Tailcat. The recipes were checked against the Intel original on Windows only, not on an Intel Mac.
 - **首页 / Homepage**：中英文 README 重写得更短，去掉重复的段落和不准确的说法。开头换成 Windows、网页版、Android 三端同框的大图，下面 6 张图展示联网和画图、执行命令前确认、手机、平板浏览器、自选模型和配对码连接（都是演示数据，手机和平板截图是 1.1.0 界面）。Both READMEs are shorter, without repeated sections or inaccurate claims. They now open with one image of the Windows, web and Android clients side by side, followed by six images of web search and pictures, command approval, phones, tablet browsers, your own models and pairing (demo data; the phone and tablet shots show the 1.1.0 interface).
 - **官方网站分享的 Bot / Bots shared on the official website**：写明 x.ai/bot/… 页面的「Add to Grok Bot」在本项目里不能用：模板存在官方云端，要官方账号才能下载，客户端也不接管官方的 `grokbot://` 链接（[#7](https://github.com/ferretgeek/prokbot-plus/issues/7)）。Documented that "Add to Grok Bot" on x.ai/bot/… pages does not work here: the templates live in the official cloud and need an official account, and the clients leave the official `grokbot://` links alone.
 - **配对码 / Pairing codes**：英文文档把配对码写成「6 位数字」，实际是 6 个字母和数字，已改正。The English documents called the pairing code six digits; it is six letters and digits.
