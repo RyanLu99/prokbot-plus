@@ -4,6 +4,10 @@
 
 Versions start at ProkBot Plus 1.0.0; upstream ProkBot releases are listed at the end. Full notes for each version are in its [release](https://github.com/ferretgeek/prokbot-plus/releases) and the commit history.
 
+## 未发布 / Unreleased
+
+- **手动启动 / Manual start**：Host 说明补充：只恢复数据后手动用 Compose 启动同机部署时，要先运行一次 `data_init.py`，否则 Bot 的电脑因为挂载目录不存在而启动失败（`deploy.py` 会自动做）。The Host README notes that starting a same-machine deployment by hand with Compose after a data-only restore must run `data_init.py` once first, or the Bot's computer fails on a missing mount directory (`deploy.py` does this automatically).
+
 ## ProkBot Plus 1.7.0 (2026-11-20)
 
 Bot 在自己的电脑上也能读到 Host 里的记忆文件（[#5](https://github.com/ferretgeek/prokbot-plus/pull/5)，@jun9100 贡献）。只有 Host 变化，要升级 Host；客户端与 1.6.0 相同。Bots can read their Host memory files on their own computer (contributed by @jun9100). Only the Host changes, so upgrade it; the clients are the same as 1.6.0.

@@ -52,7 +52,11 @@ python3 deploy.py --home "$HOME/grokbot-restored" status < /dev/null
 
 `recover` checks the volumes, project name, topology and local image IDs, unpacks only into the new project and starts it with the recorded images only, without building, pulling or touching the original volumes. Afterwards, read old chats and files back with an original device. If startup fails, the new project's volumes are kept and the original instance is not restarted automatically.
 
-If an old manifest lacks complete `serviceImages`, or the exact images are not on this machine, the instance cannot be brought back automatically; do not guess a version from a `:local` tag. To restore data only, use `python3 release/backup.py restore --project grokbot-data-only --directory /path/to/backup --image <verified image ID> < /dev/null`; it starts nothing, and a standalone execution node uses the same entry point.
+If an old manifest lacks complete `serviceImages`, or the exact images are not on this machine, the instance cannot be brought back automatically; do not guess a version from a `:local` tag. To restore data only, use `python3 release/backup.py restore --project grokbot-data-only --directory /path/to/backup --image <verified image ID> < /dev/null`; it starts nothing, and a standalone execution node uses the same entry point. To start a same-machine deployment by hand with Compose afterwards, run the command below once before `up -d`. It creates the directories the Bot's computer mounts (only where missing); without it the Bot's computer fails to start because a mount directory is missing. `deploy.py` does this automatically in `up`, `update` and `recover`.
+
+```sh
+docker compose --env-file <instance directory>/.env -p <project> -f release/compose.yaml run --rm --no-deps --user 0:0 --entrypoint python3 host /opt/grokbot/release/data_init.py /data/runtime/host-data < /dev/null
+```
 
 On one Docker daemon, the deployment tool uses locks so that a project is not changed concurrently and a recovered copy does not go online twice. Different daemons share no locks; the operator makes sure each identity runs only once. A crash can leave a lock behind: check the services and running operations first, and do not treat removing locks as a routine step. A project whose name ends in `_restore-in-progress` is an unfinished recovery; do not start it, and retry with another empty project.
 

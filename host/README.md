@@ -52,7 +52,11 @@ python3 deploy.py --home "$HOME/grokbot-restored" status < /dev/null
 
 `recover` 校验卷、项目名、拓扑和本地镜像 ID，只往新项目解包，启动时只用记录的镜像，不构建、不拉取、不改原卷。启动后用原设备读回旧对话和文件。启动失败时新项目的卷保留，原实例不会自动重启。
 
-旧清单缺少完整的 `serviceImages`，或精确镜像不在本机时，不能自动恢复上线，也不要用 `:local` 标签猜版本。只恢复数据用 `python3 release/backup.py restore --project grokbot-data-only --directory /path/to/backup --image <已核实的镜像ID> < /dev/null`，它不启动服务，独立执行节点也用这个入口。
+旧清单缺少完整的 `serviceImages`，或精确镜像不在本机时，不能自动恢复上线，也不要用 `:local` 标签猜版本。只恢复数据用 `python3 release/backup.py restore --project grokbot-data-only --directory /path/to/backup --image <已核实的镜像ID> < /dev/null`，它不启动服务，独立执行节点也用这个入口。之后要手动用 Compose 启动同机部署时，先在 `up -d` 前运行一次下面的命令，创建 Bot 的电脑要挂载的目录（只建缺失的），否则 Bot 的电脑因为挂载目录不存在而启动失败；`deploy.py` 的 `up`、`update`、`recover` 会自动做这一步。
+
+```sh
+docker compose --env-file <实例目录>/.env -p <项目名> -f release/compose.yaml run --rm --no-deps --user 0:0 --entrypoint python3 host /opt/grokbot/release/data_init.py /data/runtime/host-data < /dev/null
+```
 
 同一个 Docker daemon 上，部署工具用锁防止并发修改同一项目、同源恢复副本重复上线；不同 daemon 之间不共享锁，由操作者确认同一身份只运行一份。崩溃后可能留锁，先核实服务和操作进程，不要把删锁当成常规步骤。名字带 `_restore-in-progress` 的项目是未完成的恢复，不能启动，换一个空项目重试。
 
