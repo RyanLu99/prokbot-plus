@@ -56,8 +56,8 @@ def initialise(host_data, *, trusted_root=Path('/data'), uid=UID, gid=GID, mode=
             raise ValueError(f'Host data tree is a symlink: {path}')
         if not path.exists():
             path.mkdir(mode=mode)
+            metadata(path, uid=uid, gid=gid, mode=mode)
             created.append(tree)
-        metadata(path, uid=uid, gid=gid, mode=mode)
     return {'rootCreated': root_created, 'created': created, 'trees': list(DATA_TREES)}
 
 

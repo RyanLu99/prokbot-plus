@@ -9,7 +9,7 @@ test('parent prompts preserve proactive memory retrieval and reject stale access
   const directory = await mkdtemp(join(tmpdir(), 'prompt-runtime-'));
   const previous = globalThis.__grokbotPromptPolicy;
   const runtime = await installLocalPromptPolicy(directory, {}, {
-    pollMs: 60_000, memoryRoot: '/data/runtime/host-data/',
+    pollMs: 60_000, memoryRoot: '/data/runtime/host-data/', memoryMounts: true,
   });
   t.after(async () => {
     await runtime.close();
@@ -29,4 +29,38 @@ test('parent prompts preserve proactive memory retrieval and reject stale access
   assert.match(parent, /A missing monthly log means that no file has been recorded for that month yet/);
   assert.doesNotMatch(parent, /When asked to read, search, audit, clean, or summarize memory/);
   assert.equal(render('automation', 'Original automation prompt'), 'Original automation prompt');
+});
+
+test('remote execution topologies do not receive the local memory directive', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'prompt-runtime-'));
+  const previous = globalThis.__grokbotPromptPolicy;
+  const runtime = await installLocalPromptPolicy(directory, {}, { pollMs: 60_000, memoryMounts: false });
+  t.after(async () => {
+    await runtime.close();
+    if (previous === undefined) delete globalThis.__grokbotPromptPolicy;
+    else globalThis.__grokbotPromptPolicy = previous;
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const render = globalThis.__grokbotPromptPolicy.snapshot();
+  assert.equal(render('parent', 'Original parent prompt'), 'Original parent prompt');
+});
+
+test('an almost-full parent prompt falls back when the memory directive would exceed the limit', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'prompt-runtime-'));
+  const previous = globalThis.__grokbotPromptPolicy;
+  const runtime = await installLocalPromptPolicy(directory, {}, {
+    pollMs: 60_000, memoryRoot: '/data/runtime/host-data', memoryMounts: true,
+  });
+  t.after(async () => {
+    await runtime.close();
+    if (previous === undefined) delete globalThis.__grokbotPromptPolicy;
+    else globalThis.__grokbotPromptPolicy = previous;
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  const original = `Memory prompt\n${'x'.repeat(199_900)}`;
+  assert.ok(Buffer.byteLength(original) < 200_000);
+  const render = globalThis.__grokbotPromptPolicy.snapshot();
+  assert.equal(render('parent', original), original);
 });

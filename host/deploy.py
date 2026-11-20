@@ -16,6 +16,9 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 RELEASE = Path(__file__).resolve().parent / 'release'
+MIN_DOCKER_ENGINE = (26, 0, 0)
+MIN_DOCKER_API = (1, 45, 0)
+MIN_COMPOSE = (2, 26, 0)
 sys.path.insert(0, str(RELEASE))
 from platforms import BOX, check_box_execution, docker_platform
 import backup as volume_backup
@@ -44,6 +47,7 @@ def initialise(home, args):
     origin = endpoint(args.public_url or f'http://127.0.0.1:{args.port}')
     if ':' in listen:
         listen = f'[{listen}]'
+    check_runtime_versions()
     home.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
         fd = os.open(home / '.env', os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -213,11 +217,45 @@ def startup_images(services, host_id):
     return images
 
 
+def version_tuple(value, label):
+    match = re.fullmatch(r'v?(\d+)\.(\d+)(?:\.(\d+))?(?:[-+][\w.+-]+)?', value)
+    if not match:
+        raise ValueError(f'Docker did not report a usable {label} version.')
+    return tuple(int(part or 0) for part in match.groups())
+
+
+def require_version(actual, minimum, label):
+    if actual < minimum:
+        found = '.'.join(map(str, actual))
+        required = '.'.join(map(str, minimum))
+        raise ValueError(f'{label} {found} is too old; version {required} or newer is required for Host-data subpath mounts.')
+
+
 def compose_version():
     version = run(['docker', 'compose', 'version', '--short'], capture=True).stdout.strip()
-    if not re.fullmatch(r'v?\d+\.\d+(?:\.\d+)?(?:[-+][\w.+-]+)?', version):
-        raise ValueError('Docker Compose did not report a usable version for the Host data volume.')
+    version_tuple(version, 'Compose')
     return version
+
+
+def check_runtime_versions():
+    try:
+        server = json.loads(run(['docker', 'version', '--format', '{{json .Server}}'], capture=True).stdout)
+    except json.JSONDecodeError as error:
+        raise ValueError('Docker did not report usable Engine version details.') from error
+    if not isinstance(server, dict):
+        raise ValueError('Docker Engine is unavailable; start it before configuring Host data mounts.')
+    engine = server.get('Version')
+    api = server.get('ApiVersion')
+    if not isinstance(engine, str) or not isinstance(api, str):
+        raise ValueError('Docker did not report both Engine and API versions.')
+    engine_version = version_tuple(engine, 'Engine')
+    api_version = version_tuple(api, 'API')
+    compose = compose_version()
+    compose_number = version_tuple(compose, 'Compose')
+    require_version(engine_version, MIN_DOCKER_ENGINE, 'Docker Engine')
+    require_version(api_version, MIN_DOCKER_API, 'Docker API')
+    require_version(compose_number, MIN_COMPOSE, 'Docker Compose')
+    return {'dockerEngineVersion': engine, 'dockerApiVersion': api, 'composeVersion': compose}
 
 
 def ensure_host_data(project, image):
@@ -394,7 +432,12 @@ def recover(args, home, dc, services):
     images = manifest.get('serviceImages')
     if (not isinstance(images, dict) or set(images) != set(services) or
             any(not isinstance(i, str) or not re.fullmatch(r'sha256:[0-9a-f]{64}', i) for i in images.values())):
-        raise ValueError('Backup has no verified service image IDs for this topology. Use data-only restore; do not guess tags.')
+        # Backups from backup.py or an older deploy.py record no image IDs. Starting them would mean
+        # guessing which image wrote the data, so they get the data-only path with its exact command.
+        raise ValueError('Backup has no verified service image IDs for this topology, so it cannot be started '
+                         'automatically; do not guess tags. Use data-only restore: python3 release/backup.py restore '
+                         f'--project <new project> --directory {source} --image <verified local Host image ID>, '
+                         'then start that project only after confirming no other copy of this Host identity runs.')
     suffixes = {n for s in services for n in volume_backup.MOUNTS[s]}
     if {r.get('suffix') for r in manifest['volumes'] if isinstance(r, dict)} != suffixes:
         raise ValueError('Backup volumes do not match the selected recovery topology.')
@@ -486,7 +529,7 @@ def main(argv=None):
         report = {'ok': False, 'project': args.project, 'existingConfig': (home / '.env').is_file()}
         try:
             platform = docker_platform()
-            report.update(hostPlatform=platform, composeVersion=run(['docker', 'compose', 'version', '--short'], capture=True).stdout.strip(),
+            report.update(hostPlatform=platform, **check_runtime_versions(),
                           desktop='remote' if args.host_only else 'native' if platform == BOX['platform'] else 'emulated-amd64',
                           existingVolumes=sorted(volume_backup.project_volumes(args.project)), resources=daemon_resources())
             help_text = run(['docker', 'compose', 'up', '--help'], capture=True).stdout
@@ -504,6 +547,8 @@ def main(argv=None):
         if not report['ok']:
             raise SystemExit(1)
         return
+    if args.action in ('up', 'update', 'recover'):
+        check_runtime_versions()
     dc = compose(args, home)
     if args.action in ('status', 'logs', 'setup-key'):
         return run(dc + {'status': ['ps', '--all'], 'logs': ['logs', '--tail', '100', 'host'],

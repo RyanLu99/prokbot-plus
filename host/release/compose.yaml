@@ -11,6 +11,7 @@ services:
       GROKBOT_BOX_HOST: box
       GROKBOT_VNC_URL: http://box:6080
       GROKBOT_FORK_VNC_URL: http://box:6081
+      GROKBOT_HOST_MEMORY_MOUNTS: "1"
       TZ: ${TZ:-Asia/Singapore}
     volumes:
       - host-data:/data
@@ -28,41 +29,11 @@ services:
     volumes:
       - box-home:/home/box
       - box-workspace:/workspace
-      # The original Host gives the execution desktop only these data trees.
-      # Mounting each parent means newly created Agents are visible without a new mount.
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/agents
-        volume: { subpath: runtime/host-data/agents }
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/agent-transcripts
-        volume: { subpath: runtime/host-data/agent-transcripts }
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/user-memory
-        volume: { subpath: runtime/host-data/user-memory }
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/workflows
-        volume: { subpath: runtime/host-data/workflows }
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/plugins
-        volume: { subpath: runtime/host-data/plugins }
-      - type: volume
-        source: host-data
-        target: /home/box/sand-data/managed-skills
-        volume: { subpath: runtime/host-data/managed-skills }
-      # Some original tools use the Host's absolute data path instead of agent-data.
+      # Keep every mount below RemoteBox.protectedBoxPaths so file-tool checks still apply.
       - type: volume
         source: host-data
         target: /data/runtime/host-data/agents
         volume: { subpath: runtime/host-data/agents }
-      - type: volume
-        source: host-data
-        target: /data/runtime/host-data/agent-transcripts
-        volume: { subpath: runtime/host-data/agent-transcripts }
       - type: volume
         source: host-data
         target: /data/runtime/host-data/user-memory

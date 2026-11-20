@@ -24,9 +24,9 @@ OPERATION_LABEL = 'io.prokbot.operation-id'
 MOUNTS = {'host': {'host-data': '/data'}, 'box': {'box-home': '/home/box', 'box-workspace': '/workspace'},
           'gateway': {'gateway-data': '/data'}}
 TOPOLOGIES = (('host',), ('host', 'box'), ('gateway', 'box'))
-DATA_TREES = ('agents', 'agent-transcripts', 'user-memory', 'workflows', 'plugins', 'managed-skills')
+DATA_TREES = ('agents', 'user-memory', 'workflows', 'plugins', 'managed-skills')
 DATA_SOURCE_ROOT = PurePosixPath('runtime/host-data')
-BOX_DATA_ROOTS = (PurePosixPath('/home/box/sand-data'), PurePosixPath('/data/runtime/host-data'))
+BOX_DATA_ROOTS = (PurePosixPath('/data/runtime/host-data'),)
 BOX_DATA_TARGETS = {str(root / tree): tree for root in BOX_DATA_ROOTS for tree in DATA_TREES}
 
 

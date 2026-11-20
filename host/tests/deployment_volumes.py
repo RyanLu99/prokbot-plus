@@ -178,6 +178,8 @@ class Engine:
         if cmd[:2] == ['image', 'rm']:
             del self.images[cmd[-1]]
             return ''
+        if cmd[:2] == ['version', '--format']:
+            return json.dumps({'Version': '29.1.2', 'ApiVersion': '1.52'})
         if cmd[0] == 'compose':
             if 'version' in cmd:
                 return '2.40.3'
@@ -440,7 +442,7 @@ class VolumeTests(unittest.TestCase):
         self.assertEqual(len(manifest['volumes']), 3)
         self.assertEqual({c['State']['Status'] for c in self.e.containers.values()}, {'running'})
 
-    def test_box_gets_only_the_six_parent_data_trees_and_host_data_is_archived_once(self):
+    def test_box_gets_only_the_five_parent_data_trees_and_host_data_is_archived_once(self):
         self.e.stack()
         self.add_box_data_mounts()
         services = backup.project_services(PROJECT, ('host', 'box'), host_data=True)
@@ -450,7 +452,7 @@ class VolumeTests(unittest.TestCase):
         self.assertEqual([item['suffix'] for item in manifest['volumes']], ['box-home', 'box-workspace', 'host-data'])
         self.assertNotIn('connector-secrets', backup.BOX_DATA_TARGETS)
         self.assertNotIn('projects', backup.DATA_TREES)
-        self.assertEqual(len(backup.BOX_DATA_TARGETS), 12)
+        self.assertEqual(len(backup.BOX_DATA_TARGETS), 5)
 
     def test_fnOS_style_box_bind_tree_mounts_are_accepted(self):
         self.e.stack()
@@ -472,11 +474,13 @@ class VolumeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'incomplete'):
                 backup.project_services(PROJECT, ('host', 'box'), host_data=True)
         box['Mounts'] = [dict(item) for item in original]
-        with self.subTest('sensitive-extra'):
-            box['Mounts'].append({'Type': 'bind', 'Source': '/srv/prokbot/runtime/host-data/connector-secrets',
-                                  'Destination': '/home/box/sand-data/connector-secrets', 'RW': True})
-            with self.assertRaisesRegex(ValueError, 'unapproved'):
-                backup.project_services(PROJECT, ('host', 'box'), host_data=True)
+        for name in ('connector-secrets', 'agent-transcripts'):
+            with self.subTest('sensitive-extra', name=name):
+                box['Mounts'] = [dict(item) for item in original]
+                box['Mounts'].append({'Type': 'bind', 'Source': f'/srv/prokbot/runtime/host-data/{name}',
+                                      'Destination': f'/data/runtime/host-data/{name}', 'RW': True})
+                with self.assertRaisesRegex(ValueError, 'unapproved'):
+                    backup.project_services(PROJECT, ('host', 'box'), host_data=True)
         box['Mounts'] = [dict(item) for item in original]
         with self.subTest('wrong-source'):
             box['Mounts'][2]['Name'] = 'another_host-data'
@@ -484,7 +488,7 @@ class VolumeTests(unittest.TestCase):
                 backup.project_services(PROJECT, ('host', 'box'), host_data=True)
         box['Mounts'] = [dict(item) for item in original]
         with self.subTest('read-only'):
-            next(item for item in box['Mounts'] if item['Destination'] == '/home/box/sand-data/agents')['RW'] = False
+            next(item for item in box['Mounts'] if item['Destination'] == '/data/runtime/host-data/agents')['RW'] = False
             with self.assertRaisesRegex(ValueError, 'not writable'):
                 backup.project_services(PROJECT, ('host', 'box'), host_data=True)
         box['Mounts'] = [dict(item) for item in original]

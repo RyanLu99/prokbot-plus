@@ -15,6 +15,7 @@ function memoryAccessDirective(memoryRoot) {
 /** Only base instructions are catalogued. Profile, memory, skills and user content stay in the original assembler. */
 export async function installLocalPromptPolicy(directory, library, {
   pollMs = 1000, revision = 'local', memoryRoot = process.env.SAND_DATA_ROOT ?? '/data/runtime/host-data',
+  memoryMounts = process.env.GROKBOT_HOST_MEMORY_MOUNTS === '1',
 } = {}) {
   const settingsPath = join(directory, 'prompt-settings.json'), catalogPath = join(directory, 'prompt-catalog.json');
   let settings = { version: 1, entries: {} }, catalog = await readJson(catalogPath, { version: 1, entries: [] }), tail = Promise.resolve(), reading = false;
@@ -70,7 +71,12 @@ export async function installLocalPromptPolicy(directory, library, {
         if (selected !== undefined) {
           try { rendered = validatePrompt(selected); } catch { rendered = original; }
         }
-        return role === 'parent' ? validatePrompt(`${rendered.trimEnd()}\n\n${memoryAccessDirective(memoryRoot)}`) : rendered;
+        if (role !== 'parent' || !memoryMounts) return rendered;
+        try {
+          return validatePrompt(`${rendered.trimEnd()}\n\n${memoryAccessDirective(memoryRoot)}`);
+        } catch {
+          return rendered;
+        }
       };
       render.recordAssembly = value => { assembly = value; publish(); };
       render.recordTools = values => {

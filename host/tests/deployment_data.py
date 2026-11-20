@@ -22,7 +22,7 @@ class DataInitTests(unittest.TestCase):
     def initialise(self):
         return data_init.initialise(self.root, **self.options)
 
-    def test_new_volume_creates_only_the_six_approved_trees(self):
+    def test_new_volume_creates_only_the_five_approved_trees(self):
         result = self.initialise()
         self.assertTrue(result['rootCreated'])
         self.assertEqual(set(result['created']), set(data_init.DATA_TREES))
@@ -37,13 +37,23 @@ class DataInitTests(unittest.TestCase):
         tree.mkdir(parents=True)
         profile = tree/'profile.md'
         profile.write_text('remember me', encoding='utf-8')
+        agents = self.root/'agents'
+        if os.name == 'posix':
+            agents.chmod(0o711)
+            os.chown(agents, os.getuid(), os.getgid())
+            os.utime(agents, ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000))
+        top_before = agents.stat()
         before = profile.stat()
         result = self.initialise()
         after = profile.stat()
+        top_after = agents.stat()
         self.assertEqual(set(result['created']), set(data_init.DATA_TREES) - {'agents'})
         self.assertEqual(profile.read_text(encoding='utf-8'), 'remember me')
         self.assertEqual((before.st_ino, before.st_mode, before.st_mtime_ns),
                          (after.st_ino, after.st_mode, after.st_mtime_ns))
+        if os.name == 'posix':
+            self.assertEqual((top_before.st_uid, top_before.st_gid, top_before.st_mode, top_before.st_mtime_ns),
+                             (top_after.st_uid, top_after.st_gid, top_after.st_mode, top_after.st_mtime_ns))
 
     def test_existing_tree_is_idempotent(self):
         first = self.initialise()
