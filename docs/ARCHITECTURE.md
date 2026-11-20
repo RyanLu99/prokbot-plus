@@ -69,6 +69,8 @@ flowchart LR
 - **`host` 容器**：管理服务监听 8000，映射到宿主机 `${GROKBOT_LISTEN_ADDRESS:-127.0.0.1}:${GROKBOT_PUBLIC_PORT:-18080}`；原版 Host 只监听容器内的 `127.0.0.1:1340`。
 - **`box` 容器**：官方 Linux 桌面，VNC 端口只在容器网络内可见。
 
+同机 Box 只共享五棵受保护数据目录：`agents`、`user-memory`、`workflows`、`plugins`、`managed-skills`，并且只挂到 `/data/runtime/host-data/<目录>`，仍在原版 `RemoteBox` 的受保护根内；`agent-transcripts`、`.db`、`connector-secrets`、`model.env`、`auth.json`、`projects` 和其他内部数据不会挂入 Box。每个目录使用独立的 `volume subpath`，所以部署工具会在写入或启动前要求 Docker Engine 26.0+、API 1.45+ 和 Compose 2.26.0+。Host 镜像启动时只创建缺失目录，并且只设置这些新建目录的属主和权限，不改已有顶层目录；部署、备份和恢复都会核对完整的挂载集合。`compose.yaml` 还会设置 `GROKBOT_HOST_MEMORY_MOUNTS=1`，提示运行时仅在同机 Box 有这些挂载时追加现场检查提示；`--host-only`、远程执行端和用户自己的电脑不会收到该提示。
+
 | 数据 | 内容 |
 | --- | --- |
 | 卷 `host-data`（`/data`） | 管理员（`auth.json`）、设备、Bot、对话、用量和配置。模型 Key 在 `model.env`，联网在 `web-services.json`，图片在 `media.json` |

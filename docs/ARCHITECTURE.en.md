@@ -69,6 +69,8 @@ Only four parts of the official Host are replaced, the ones tied to official ser
 - **`host` container**: the admin service listens on 8000, published on the host at `${GROKBOT_LISTEN_ADDRESS:-127.0.0.1}:${GROKBOT_PUBLIC_PORT:-18080}`; the official Host listens only on `127.0.0.1:1340` inside the container.
 - **`box` container**: the official Linux desktop; its VNC port is visible only on the container network.
 
+A single-machine Box shares only five protected data trees: `agents`, `user-memory`, `workflows`, `plugins` and `managed-skills`, mounted only below `/data/runtime/host-data/<tree>` so they stay inside the original `RemoteBox` protected root. `agent-transcripts`, `.db` files, `connector-secrets`, `model.env`, `auth.json`, `projects` and other internal data are never mounted into Box. Each tree uses its own `volume subpath`, so deployment requires Docker Engine 26.0+, API 1.45+ and Compose 2.26.0+ before writing or starting the configuration. At startup the Host image creates only missing directories and changes ownership and mode only on those new trees, never existing top-level directories; deployment, backup and recovery validate the complete mount set. `compose.yaml` also sets `GROKBOT_HOST_MEMORY_MOUNTS=1`, so the prompt runtime adds its live-access reminder only for the local Box topology; `--host-only`, remote execution nodes and the user's own computers do not receive it.
+
 | Data | Contents |
 | --- | --- |
 | Volume `host-data` (`/data`) | Administrator (`auth.json`), devices, Bots, chats, usage and settings. Model keys in `model.env`, web tools in `web-services.json`, images in `media.json` |

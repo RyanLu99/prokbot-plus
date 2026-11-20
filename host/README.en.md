@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-A self-hosted Grok Bot server. The Host builds on Linux amd64 / arm64; the official execution desktop is amd64 only, so an ARM machine pairs with a separate amd64 node or emulates it (experimental). Requires Python 3.10+ and Docker Compose v2.
+A self-hosted Grok Bot server. The Host builds on Linux amd64 / arm64; the official execution desktop is amd64 only, so an ARM machine pairs with a separate amd64 node or emulates it (experimental). Requires Python 3.10+, Docker Engine 26.0+ (API 1.45+) and Docker Compose 2.26.0+.
 
 See the [deployment guide](../docs/AI-INSTALL.en.md) for the full steps and the [technical documentation](../docs/ARCHITECTURE.en.md) for how it works.
 
@@ -40,6 +40,7 @@ python3 deploy.py backup < /dev/null
 - A single-machine deployment backs up `host-data`, `box-home` and `box-workspace`; a standalone Host has only `host-data`, and the execution node backs up `gateway-data` and the two desktop volumes separately.
 - A backup holds only volume archives and a checksum manifest, **not images, the instance's `.env` or the host system**. Volumes hold pairing identities, model keys, chats and workspace files; keep backups private.
 - A backup pauses running containers and restores their state afterwards. `update` builds the candidate first, then stops the old services and backs up. A split deployment is not an atomic snapshot across machines; stop writes on both sides.
+- A single-machine Box mounts only the five protected data trees `agents`, `user-memory`, `workflows`, `plugins` and `managed-skills`, and only below `/data/runtime/host-data/<tree>`. `agent-transcripts`, `connector-secrets`, `model.env`, `auth.json`, `projects` and internal tokens are never exposed to Box. Before writing or starting the configuration, deployment requires Docker Engine 26.0+, API 1.45+ and Compose 2.26.0+; data initialization changes ownership and mode only on directories it creates, never existing top-level trees. Deployment, backup and recovery validate the complete mount set.
 
 **Recover into a new instance**: keep the volume backup, the original `.env`, the matching code revision and the images separately; `serviceImages` in the manifest records full image IDs, and the target Docker must already have those images. First confirm that the original instance and any copy of its identity elsewhere are stopped, and never run `down -v` on the original project. The example below is a single-machine loopback setup; replace the directory and project name. To keep existing pairings working, recreate the original address with `--listen`, `--port` and `--public-url` on `init`. A standalone Host adds `--host-only` before `init`.
 

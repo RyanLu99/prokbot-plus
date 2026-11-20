@@ -4,6 +4,14 @@
 
 Versions start at ProkBot Plus 1.0.0; upstream ProkBot releases are listed at the end. Full notes for each version are in its [release](https://github.com/ferretgeek/prokbot-plus/releases) and the commit history.
 
+## 未发布 / Unreleased
+
+修复执行桌面中的 Bot 看不到 Host 记忆文件的问题。客户端不需要修改；升级 Host 部署并重建 Box 后生效。Fixes Bots in the execution desktop being unable to see Host memory files. Clients need no change; update the Host deployment and recreate Box.
+
+- **Host 记忆与执行桌面 / Host memory and the execution desktop**：同机 Box 只获得 `agents`、`user-memory`、`workflows`、`plugins`、`managed-skills` 五棵受保护目录，并且只挂到 `/data/runtime/host-data/<目录>`；`agent-transcripts`、`connector-secrets`、`model.env`、`auth.json`、`projects` 和内部令牌不会暴露。初始化只设置新建目录的属主和权限，不改已有顶层目录；部署、备份和恢复都会核对缺项、额外项、来源、子路径及只读状态。The local Box receives only the five protected trees `agents`, `user-memory`, `workflows`, `plugins` and `managed-skills`, mounted only below `/data/runtime/host-data/<tree>`; `agent-transcripts`, `connector-secrets`, `model.env`, `auth.json`, `projects` and internal tokens stay hidden. Initialization changes metadata only on newly created trees, and deployment, backup and recovery validate missing, extra, source, subpath and read-only layouts.
+- **主动记忆与现场检查 / Proactive memory and live checks**：主 Bot 保留原版的主动检索逻辑，可自行读取自动注入内容以外的旧记忆。仅同机 Box 拓扑会追加“重新检查访问状态”的提示，`--host-only` 和远程执行端不会收到无效路径；追加后超过提示长度上限时回退原提示，不影响启动。The parent Bot keeps the original proactive retrieval behavior. Only the local Box topology adds the live-access reminder, so `--host-only` and remote execution nodes do not receive invalid paths; if the result exceeds the prompt size limit, the original prompt is used.
+- **部署门禁 / Deployment gate**：`doctor`、`init`、`up`、`update` 和 `recover` 在写入或启动子路径挂载前要求 Docker Engine 26.0+、API 1.45+ 和 Compose 2.26.0+，避免旧版 Compose 把整个 `host-data` 挂进 Box。`doctor`, `init`, `up`, `update` and `recover` require Docker Engine 26.0+, API 1.45+ and Compose 2.26.0+ before writing or starting subpath mounts, so older Compose versions cannot fall back to mounting all of `host-data`.
+
 ## ProkBot Plus 1.6.0 (2026-11-20)
 
 Mac 补丁增加 Intel 芯片（实验），首页和文档整理。只有 Mac 补丁有程序变化，Host、Windows、Android、网页版和 iOS 与 1.5.1 相同。Experimental Intel Mac support, plus homepage and documentation work. Only the Mac patch changes; Host, Windows, Android, web and iOS are the same as 1.5.1.
