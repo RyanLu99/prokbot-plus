@@ -47,7 +47,9 @@ def initialise(home, args):
     origin = endpoint(args.public_url or f'http://127.0.0.1:{args.port}')
     if ':' in listen:
         listen = f'[{listen}]'
-    check_runtime_versions()
+    # Only the local Box uses subpath mounts; a Host-only instance keeps working on older Docker.
+    if not args.host_only:
+        check_runtime_versions()
     home.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
         fd = os.open(home / '.env', os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -218,7 +220,8 @@ def startup_images(services, host_id):
 
 
 def version_tuple(value, label):
-    match = re.fullmatch(r'v?(\d+)\.(\d+)(?:\.(\d+))?(?:[-+][\w.+-]+)?', value)
+    # Distribution builds add suffixes, e.g. Ubuntu's Compose reports 2.40.3+ds1-0ubuntu1~24.04.1.
+    match = re.match(r'v?(\d+)\.(\d+)(?:\.(\d+))?(?![\d.])', value)
     if not match:
         raise ValueError(f'Docker did not report a usable {label} version.')
     return tuple(int(part or 0) for part in match.groups())
@@ -233,8 +236,8 @@ def require_version(actual, minimum, label):
 
 def compose_version():
     version = run(['docker', 'compose', 'version', '--short'], capture=True).stdout.strip()
-    version_tuple(version, 'Compose')
-    return version
+    # Compose labels its own volumes with the plain number, which backup lineage checks expect.
+    return '.'.join(map(str, version_tuple(version, 'Compose')))
 
 
 def check_runtime_versions():
@@ -529,7 +532,7 @@ def main(argv=None):
         report = {'ok': False, 'project': args.project, 'existingConfig': (home / '.env').is_file()}
         try:
             platform = docker_platform()
-            report.update(hostPlatform=platform, **check_runtime_versions(),
+            report.update(hostPlatform=platform, **({} if args.host_only else check_runtime_versions()),
                           desktop='remote' if args.host_only else 'native' if platform == BOX['platform'] else 'emulated-amd64',
                           existingVolumes=sorted(volume_backup.project_volumes(args.project)), resources=daemon_resources())
             help_text = run(['docker', 'compose', 'up', '--help'], capture=True).stdout
@@ -547,7 +550,7 @@ def main(argv=None):
         if not report['ok']:
             raise SystemExit(1)
         return
-    if args.action in ('up', 'update', 'recover'):
+    if args.action in ('up', 'update', 'recover') and not args.host_only:
         check_runtime_versions()
     dc = compose(args, home)
     if args.action in ('status', 'logs', 'setup-key'):

@@ -99,10 +99,15 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(deploy, 'run', side_effect=versions(server)):
             self.assertEqual(deploy.check_runtime_versions(), {
                 'dockerEngineVersion': '26.0.0', 'dockerApiVersion': '1.45', 'composeVersion': '2.26.0'})
+        ubuntu = {'Version': '26.1.5+dfsg1', 'ApiVersion': '1.45'}
+        with patch.object(deploy, 'run', side_effect=versions(ubuntu, '2.40.3+ds1-0ubuntu1~24.04.1')):
+            self.assertEqual(deploy.check_runtime_versions()['composeVersion'], '2.40.3')
         for old_server, old_compose, message in [
             ({'Version': '25.0.9', 'ApiVersion': '1.44'}, '2.26.0', 'Docker Engine 25.0.9 is too old'),
             ({'Version': '26.0.0', 'ApiVersion': '1.44'}, '2.26.0', 'Docker API 1.44.0 is too old'),
             (server, '2.25.0', 'Docker Compose 2.25.0 is too old'),
+            (server, '2.25.0+ds1-0ubuntu1~22.04.1', 'Docker Compose 2.25.0 is too old'),
+            (server, 'dev', 'usable Compose version'),
         ]:
             with self.subTest(message=message), patch.object(deploy, 'run', side_effect=versions(old_server, old_compose)):
                 with self.assertRaisesRegex(ValueError, message):
@@ -120,6 +125,16 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'runtime too old'):
                 self.invoke('update')
             build.assert_not_called()
+
+    def test_host_only_skips_subpath_runtime_gate(self):
+        with patch.object(deploy, 'check_runtime_versions', side_effect=ValueError('runtime too old')) as gate:
+            self.invoke('--host-only', 'init')
+            with patch.object(deploy, 'operate') as operate, \
+                 patch.object(deploy.volume_backup, 'project_lock', return_value=contextlib.nullcontext()):
+                self.invoke('--host-only', 'update')
+            operate.assert_called_once()
+            gate.assert_not_called()
+        self.assertIn('PROKBOT_MODE=remote', (self.home / '.env').read_text())
 
 
 class ComposeMountTests(unittest.TestCase):

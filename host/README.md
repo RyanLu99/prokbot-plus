@@ -40,7 +40,7 @@ python3 deploy.py backup < /dev/null
 - 同机部署备份 `host-data`、`box-home`、`box-workspace`；独立 Host 只有 `host-data`，执行节点要单独备份 `gateway-data` 和两个桌面卷。
 - 备份目录只含卷归档和校验清单，**不含镜像、实例目录的 `.env` 和宿主机系统**。卷里有配对身份、模型 Key、对话和工作区文件，备份不要公开。
 - 备份会暂停正在运行的容器，结束后恢复。`update` 先构建候选，再停止旧服务并备份。分机部署不是跨主机原子快照，要协调两端停止写入。
-- 同机 Box 只挂载 `agents`、`user-memory`、`workflows`、`plugins`、`managed-skills` 五棵受保护数据目录，并且只挂到 `/data/runtime/host-data/<目录>`。`agent-transcripts`、`connector-secrets`、`model.env`、`auth.json`、`projects` 和内部令牌都不会暴露给 Box。部署工具在写入或启动前要求 Docker Engine 26.0+、API 1.45+ 和 Compose 2.26.0+；数据初始化只设置新建目录的属主和权限，不改已有顶层目录。部署、备份和恢复都会核对完整挂载集合。
+- 同机 Box 只挂载 `agents`、`user-memory`、`workflows`、`plugins`、`managed-skills` 五棵受保护数据目录，并且只挂到 `/data/runtime/host-data/<目录>`。`agent-transcripts`、`connector-secrets`、`model.env`、`auth.json`、`projects` 和内部令牌都不会暴露给 Box；`agents/<id>/` 里的数据库 Bot 的 Shell 看得到，Read 工具读不了，和官方同机运行时一样。同机部署时，部署工具在写入或启动前要求 Docker Engine 26.0+、API 1.45+ 和 Compose 2.26.0+（`--host-only` 不要求）；数据初始化只设置新建目录的属主和权限，不改已有顶层目录。部署、备份和恢复都会核对完整挂载集合。
 
 **恢复成一个新实例**：分开保管卷备份、原 `.env`、对应代码版本和镜像；清单的 `serviceImages` 记录完整镜像 ID，目标 Docker 必须已有这些镜像。先确认原实例及其他机器上的同一身份都已停机，不要对原项目运行 `down -v`。以下是回环地址的同机示例，目录和项目名按实际替换；要让原有配对继续可用，用 `init` 的 `--listen`、`--port`、`--public-url` 重现原地址。独立 Host 在 `init` 前加 `--host-only`。
 
