@@ -150,11 +150,11 @@ Bot 做有风险的操作前，原版会问官方分类服务。这里改用你�
 
 原版桌面客户端是 Electron 应用。这里保留原版界面，重写负责连接和系统功能的主进程（`mac/clients/desktop/`，Mac 和 Windows 共用），让它只连接你的 Host。平台差异集中在 `platform.mjs`。复杂编程交给本机的 Codex。
 
-- **Mac**：默认 ad-hoc 签名；要让 Agent 控制图形界面，需要用自己的证书签名（`--identity auto`），并授予辅助功能和屏幕录制权限。输出放在 `.noindex` 目录，避免 Spotlight 收录重复的 App。补丁按本机芯片选原版：Apple 芯片的固定输入在 `mac/patchers/desktop/`，Intel 的在 `mac/patchers/desktop/x64/`（实验），`--arch` 可以指定。
+- **Mac**：默认 ad-hoc 签名；要让 Agent 控制图形界面，需要用自己的证书签名（`--identity auto`），并授予辅助功能和屏幕录制权限。输出放在 `.noindex` 目录，避免 Spotlight 收录重复的 App。补丁按本机芯片选原版：Apple 芯片的固定输入在 `mac/patchers/desktop/`，Intel 的在 `mac/patchers/desktop/x64/`，`--arch` 可以指定。如需回退 `0.71.2`，请使用 v1.7.0 的 Mac 发布包。重建 Mac Tailcat：`python host/network/build-tailcat.py --target darwin-arm64 --output mac/dist/network`（Apple 芯片）和 `python host/network/build-tailcat.py --target darwin-amd64 --output mac/dist/network/x64`（Intel）。
 - **Windows**：`windows/patchers/desktop/patch.mjs` 默认用 1.2.3 安装包，`--version 1.1.0` 或 `--version 0.71.2` 改用回退版本，`--source` 可指定安装包、`app-64.7z` 或已安装目录（按大小和 SHA-256 识别版本）。从 NSIS 安装包取出 `app-64.7z`，用 Windows 自带的 `tar.exe`（Windows 10 用 7-Zip）解包，核对 `app.asar` 并回放 recipe；`--verify-only` 到此为止。生成时换入共用主进程，重打 ASAR，输出便携目录、便携 ZIP、安装包和 `*.patch.json`。改过的 `Grok Bot.exe` 不再带官方签名。
 - **Windows 运行时**：关窗后留在托盘；通知用带 AppUserModelID 的开始菜单快捷方式；本机命令用 PowerShell 并打开 UTF-8 输出（从 Git Bash 启动会改变 `cmd /c` 参数，请从开始菜单启动）；委派用本机 `codex.exe`，结束时 `taskkill /T`。Windows 没有 Mac 的鼠标键盘组件。
 - **桌面 1.1.0 / 1.2.3 接口**：preload 按 `desktop-mount`、`main`、`spotlight` 三条边声明方法，`local-services.mjs` 按边注册处理器；全局搜索由 `gateway.mjs` 转为 Host 的 `searchAgents` / `searchMedia`；听写把 16 kHz PCM 攒成 WAV 交给 Host 的 `/local/audio/transcriptions`。
-- **recipe**：1.2.3 的三平台 recipe（Windows x64、macOS ARM64、macOS Intel x64）由 `windows/tools/desktop-recipes/build.mjs`（`--target windows|mac-arm64|mac-x64`）统一生成。`spec.mjs` 的每处修改以原文件里只出现一次的文本为锚点，追加的本项目代码在 `extensions/`；`--check` 从官方安装包重新生成并逐字节比较。`1.1.0/` 和 `0.71.2/` 的 recipe 保留为 Windows 回退版本，并与 Android / 网页版共用；`mac/patchers/desktop/native-helper.mjs` 针对 1.2.3 的 `CUGrokBotService` 通用二进制更新 Team ID。`mac/clients/desktop/*-settings-extension.js` 是 0.71.2 recipe 加进设置页的代码的源码。
+- **recipe**：1.2.3 的三平台 recipe（Windows x64、macOS ARM64、macOS Intel x64）由 `windows/tools/desktop-recipes/build.mjs`（`--target windows|mac-arm64|mac-x64`）统一生成。`spec.mjs` 的每处修改以原文件里只出现一次的文本为锚点，追加的本项目代码在 `extensions/`；`--check` 从官方安装包重新生成并逐字节比较。`1.1.0/`（由提交 `8c1fcd1` 的 `spec.mjs` 生成）和 `0.71.2/` 的 recipe 保留为 Windows 回退版本，并与 Android / 网页版共用；`mac/patchers/desktop/native-helper.mjs` 针对 1.2.3 的 `CUGrokBotService` 通用二进制更新 Team ID。`mac/clients/desktop/*-settings-extension.js` 是 0.71.2 recipe 加进设置页的代码的源码。
 - **安装器**：`windows/installer/` 用 Go 标准库把 `stub.exe`、便携 ZIP 和 32 字节尾部拼成按用户安装包，默认装到 `%LOCALAPPDATA%\Programs\Grok Bot Local`，支持 `/S`、`/D=目录`。重建 stub：在 `windows/installer/` 运行 `go build -trimpath -ldflags="-H=windowsgui -s -w" -o ../dist/installer/grokbot-setup-stub.exe .`；重建 Tailcat：`python host/network/build-tailcat.py --target windows-amd64 --output windows/dist/network`。
 
 <a id="desktop-protocol"></a>
@@ -247,8 +247,8 @@ Bot 和技能发布到自己的 Host，或在管理页「分享」导出、导�
 | `host/bench/` | 整机容量测量工具（见 `host/README.md`） |
 | `mac/clients/desktop/` | 桌面主进程，Mac 与 Windows 共用；Android 也复制其中的 `i18n.mjs`、`external-url.mjs`、`connectors.mjs` |
 | `mac/patchers/desktop/` | Mac 补丁、recipe 应用器、原版下载器（Windows 也用）；`x64/` 是 Intel 版的固定输入和 recipe |
-| `windows/patchers/desktop/` | Windows 补丁：`patch.mjs`、`original.mjs`（解压官方安装包，Android 和网页版也用）、`inputs.mjs`（各版本输入）、`pe.mjs`、`recipes/`；`0.71.2/` 是回退版本 |
-| `windows/tools/` | 1.1.0 recipe 生成工具 `desktop-recipes/`、同版本 recipe 移植、preload 检查 |
+| `windows/patchers/desktop/` | Windows 补丁：`patch.mjs`、`original.mjs`（解压官方安装包，Android 和网页版也用）、`inputs.mjs`（各版本输入）、`pe.mjs`、`recipes/`；`1.1.0/` 与 `0.71.2/` 是回退版本 |
+| `windows/tools/` | 1.2.3 桌面 recipe 生成工具 `desktop-recipes/`（支持 Windows / macOS ARM64 / macOS Intel）、preload 检查 |
 | `windows/installer/`、`windows/dist/` | 安装器源码，预编译的 Tailcat 和安装器 stub |
 | `android/shell/`、`android/dist/` | Android 外壳源码（`release-shell.mjs` 重建）和预编译外壳 |
 | `android/client/` | WebView 里的桥接、排版和兼容代码，网页版共用 |
@@ -301,11 +301,11 @@ node --test "web/tests/*.test.mjs"       # 网页版
 ```sh
 node ci/official-channels.mjs --online --phase planning     # 查询官方通道的当前版本
 node ci/desktop-source-audit.mjs <windows|mac> <app.asar> <版本> <asar-sha256>
-node windows/tools/desktop-recipes/build.mjs --source <安装包> --check
+node windows/tools/desktop-recipes/build.mjs --target <windows|mac-arm64|mac-x64> --source <安装包或.app> --check
 node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> <preload-sha256>
 ```
 
-1. Windows：把当前版本的输入和 recipe 移到 `windows/patchers/desktop/<版本>/` 作为回退，更新 `supported.json`，按新原文件调整 `spec.mjs` 的锚点后运行 `build.mjs`。Android 和网页版另外验证 WebView 桥接和 `renderer-patches.mjs`，再更新 `android/patchers/supported.json`（旧版本移进 `fallback`）。
+1. 桌面（Windows 与 Mac）：Windows 先把当前版本的输入和 recipe 移到 `windows/patchers/desktop/<版本>/` 作为回退；更新各平台 `supported.json`，按新原文件调整 `spec.mjs` 的锚点后分别运行 `build.mjs --target windows`、`--target mac-arm64`、`--target mac-x64`（并在 Mac 上核对 `native-helper.mjs` 偏移）。Android 和网页版另外验证 WebView 桥接和 `renderer-patches.mjs`，再更新 `android/patchers/supported.json`（旧版本移进 `fallback`）。
 2. 检查 preload 的接口变化、Bot 目录和资料库、表格、弹窗与输入法，并确认错版输入会被拒绝。
 3. 在真实客户端上验证配对、吊销、Bot 列表与历史、两轮对话、取消、附件上传并读回、重连不重复、重启后历史仍在。
 4. 官方通道的观测记录在 `ci/official-snapshot.json`。更新它之后运行 `node ci/homepage-versions.mjs --write` 刷新双语首页的版本表；这不改变补丁接受的版本。
@@ -332,4 +332,4 @@ node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> 
 - Android：不支持 Tailcat；排版照官方手机版，但页面内容是桌面版的（设置是「通用 / 电脑 / 更新」等标签页，Bot 的电脑从对话详情打开）；后台通知靠前台服务，部分厂商系统需要允许后台运行；语音只验证到请求送达 Host；只在模拟器上测过。
 - 网页版：只能使用 Host 上的 Bot 电脑；不支持 Tailcat；http 地址下麦克风、语音输入和通知不可用，页面关闭后没有通知；没有在真机浏览器上测试。
 - 原版桌面只有 amd64。单台 ARM 机器同时运行 Host 和模拟桌面的完整部署和性能没有验证。
-- Mac 和 iOS 是上游已有的补丁，本项目没有真机测试；Intel Mac 是本项目移植的实验支持，已有用户在 Intel Mac 上实测生成、配对和对话可用，本机图形控制和 Tailcat 还没人测过。iOS 需要自备已解密的 IPA 和签名证书。
+- Mac：Intel 1.2.3 已在 Intel Mac 上实测生成、配对和对话可用（本机图形控制和 Tailcat 尚未在 Intel Mac 上实测）；Apple 芯片 1.2.3 已通过证书签名构建校验，但尚未在 Apple 芯片真机上实测运行。iOS 是上游已有的补丁，本项目尚未真机测试，需要自备已解密的 IPA 和签名证书。

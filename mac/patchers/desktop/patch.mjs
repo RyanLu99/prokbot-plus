@@ -14,7 +14,7 @@ import { acquireDesktopSource } from './download-original.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 // Apple silicon inputs live here; the Intel build of the same version has its own pins and
-// recipes (ported with windows/tools/port-desktop-recipes.mjs --platform mac) under x64/.
+// recipes (generated via windows/tools/desktop-recipes/build.mjs --target mac-x64) under x64/.
 const inputDirectories = { arm64: here, x64: path.join(here, 'x64') };
 const tailcatBinaries = { arm64: 'dist/network/grokbot-tailcat', x64: 'dist/network/x64/grokbot-tailcat' };
 const startedAt = performance.now();

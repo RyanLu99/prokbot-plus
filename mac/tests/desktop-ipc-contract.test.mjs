@@ -50,6 +50,13 @@ test('desktop IPC probes require a trusted window, a declaration and an installe
   assert.equal(invoked, 0, 'probing is side-effect free');
   assert.equal(await call('fixtureView'), 1);
   await assert.rejects(call('toString'), /does not implement/);
+  assert.deepEqual(await call('getGrokBotUserSkills'), { heldOnBox: false, skills: [] });
+  assert.deepEqual(await call('listPublicBotMarketplace'), { featuredListings: [], listings: [], hasMore: false });
+  assert.deepEqual(await call('listGrokBotTeamAgents'), []);
+  assert.deepEqual(await call('listCloudAgentPublishedApps'), { kind: 'off' });
+  assert.deepEqual(await call('getCloudAgentPublishProposals'), { kind: 'off' });
+  assert.deepEqual(await call('getLocalToolActionGrant'), { granted: false });
+  assert.deepEqual(await call('readScmConnections'), {});
 });
 
 test('desktop edges keep inline panel and Spotlight declarations out of the main edge in either minified style', () => {

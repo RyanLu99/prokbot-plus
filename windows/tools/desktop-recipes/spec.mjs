@@ -167,7 +167,7 @@ export function buildSpec(target = 'windows') {
       { append: extension('update-view.js') },
     ]),
 
-    // Marketplace: apps the Host provides form their own category without public links.
+    // Marketplace: Host apps form their own category; hide public links for both Host and LOGIN_AND_CREDENTIAL_MANAGEMENT entries.
     edit(chunks.marketplaceBrowse, [
       { replace: 'var u=[`credentials`,', text: 'var u=[`host`,`credentials`,' },
       { replace: 'd={LOGIN_AND_CREDENTIAL_MANAGEMENT:`credentials`,', text: 'd={HOST:`host`,LOGIN_AND_CREDENTIAL_MANAGEMENT:`credentials`,' },

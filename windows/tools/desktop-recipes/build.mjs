@@ -127,6 +127,9 @@ async function main() {
     if (isMac) {
       let app = source;
       if (path.extname(source).toLowerCase() === '.dmg') {
+        if (process.platform !== 'darwin') {
+          throw new Error('Mounting a macOS .dmg requires macOS (hdiutil); on Windows/Linux pass --source <path/to/Grok Bot.app> instead.');
+        }
         mounted = path.join(temporary, 'mount');
         await mkdir(mounted);
         execFileSync('hdiutil', ['attach', '-readonly', '-nobrowse', '-mountpoint', mounted, source], { stdio: 'ignore' });
