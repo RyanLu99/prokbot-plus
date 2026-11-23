@@ -175,7 +175,7 @@ export function buildSpec(target = 'windows') {
     ]),
     edit(chunks.pluginDetail, [
       { replace: 'function kt(e,t){if(e.marketplace?.ownership===`user`)return null;',
-        text: 'function kt(e,t){if(e.category===`Host`)return null;if(e.marketplace?.ownership===`user`)return null;' },
+        text: 'function kt(e,t){if(e.category===`Host`||e.category===`LOGIN_AND_CREDENTIAL_MANAGEMENT`)return null;if(e.marketplace?.ownership===`user`)return null;' },
     ]),
 
     edit(chunks.eagerApp, [
@@ -193,7 +193,8 @@ export function buildSpec(target = 'windows') {
         text: '(c=(0,Z.jsxs)(`div`,{...r,children:[i,o,s,(0,Z.jsx)(GrokLocalSettings,{agent:n})]}),' },
       { insertAfter: 'function aTt(e){', text: 'return null;' },
       { replace: 'let M=j;!M&&(g===`settings`||v===`settings`)', text: 'let M=!1;!M&&(g===`settings`||v===`settings`)' },
-      // Connected apps: no link to the cloud Bot templates.
+      // Connected apps: hide built-in official 1Password native entry; no link to the cloud Bot templates.
+      { replace: 'n=oc({onepassword:!0,email:t})', text: 'n=oc({onepassword:!1,email:t})' },
       { insertAfter: 'function k1t(){', text: 'return null;' },
       // No crash reporter, heap samples or idle sampling.
       { insertAfter: 'function f6e(e,t,n=d6e){', text: 'return{load:async()=>{},setTag:()=>{}};' },

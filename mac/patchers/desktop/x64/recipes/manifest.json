@@ -78,9 +78,9 @@
       "source": "dist/renderer/assets/chunk-plugin-detail-view-CRBo_LQw.js",
       "newFile": false,
       "recipe": "008.gbp.gz",
-      "sha256": "3d38d6d9a72f6efaa98f840ea6a64c100e085913e202fe5c766ec573e4f61f10",
-      "targetBytes": 91782,
-      "addedBytes": 35
+      "sha256": "cad25953073ec0781ed2213d94c18d3c160ce59e3b56a3cdcef5174d0174b04f",
+      "targetBytes": 91830,
+      "addedBytes": 83
     },
     {
       "path": "dist/renderer/assets/chunk-sentry-sdk-HCUyCkaO.js",
@@ -96,7 +96,7 @@
       "source": "dist/renderer/assets/chunk-view-BRGRN7FA.js",
       "newFile": false,
       "recipe": "010.gbp.gz",
-      "sha256": "0c76f884c48cb42dddf191bddab32383483c5232d6e50b55cb1aec730878c878",
+      "sha256": "931d84a4a8592ae46afa468f3dc31e2ecf34707161ee6780054f96392a7167ee",
       "targetBytes": 10153,
       "addedBytes": 955
     },
@@ -132,9 +132,9 @@
       "source": "dist/renderer/assets/index.eager-app-BiroyIsg.js",
       "newFile": false,
       "recipe": "014.gbp.gz",
-      "sha256": "fe7e2bd0b069e9ed1c8698364369a6275fb033cc55d826e82418852087195e2b",
+      "sha256": "78f5a756b4c72c170ab1f02ef59782d52479d998359814db7cafa4273d4ece4e",
       "targetBytes": 5398224,
-      "addedBytes": 4990
+      "addedBytes": 4991
     },
     {
       "path": "dist/renderer/assets/index.eager-common-D2eZn7JB.js",

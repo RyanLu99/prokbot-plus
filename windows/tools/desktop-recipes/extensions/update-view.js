@@ -1,7 +1,7 @@
 
-// Appended to the original 1.2.3 Updates module; x is its JSX runtime and g is its settings section.
+// Appended to the original 1.2.3 Updates module; x is its JSX runtime and h is its settings section.
 function GrokLocalVersion() {
-  return (0, x.jsx)(g, { children: (0, x.jsxs)('div', { style: {
+  return (0, x.jsx)(h, { children: (0, x.jsxs)('div', { style: {
     display: 'flex', alignItems: 'center', gap: 16, padding: '22px 20px', minWidth: 0,
   }, children: [
     (0, x.jsx)('img', { src: new URL('../../../local-client/icon.png', import.meta.url).href, alt: '', style: { width: 48, height: 48, flexShrink: 0 } }),
