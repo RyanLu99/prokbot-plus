@@ -131,14 +131,15 @@ try {
     await chmod(path.join(output, 'Contents/Resources/grokbot-tailcat'), 0o755);
     await cp(path.join(root, 'network/TAILCAT-LICENSE'), path.join(output, 'Contents/Resources/TAILCAT-LICENSE'));
     // ASAR extraction does not retain Unix executable bits for native helpers.
-    for (const name of ['sand-op-launcher', 'sand-webauthn-signer'])
+    for (const name of await readdir(path.join(unpacked, 'dist/native')))
       await chmod(path.join(unpacked, 'dist/native', name), 0o755);
     run('sips', ['-s', 'format', 'png', path.join(app, 'Contents/Resources/icon.icns'), '--out', path.join(unpacked, 'local-client/icon.png')]);
     const outResources = path.join(output, 'Contents/Resources');
     const outAsar = path.join(outResources, 'app.asar');
     await rm(outAsar);
     await rm(`${outAsar}.unpacked`, { recursive: true, force: true });
-    await asar.createPackageWithOptions(unpacked, outAsar, { unpack: '{**/*.node,**/dist/native/**}' });
+    await asar.createPackageWithOptions(unpacked, outAsar, {
+      unpack: '{**/*.node,**/dist/native/**,**/dist/deps/**,**/onepassword-connection-service.cjs}' });
     const header = asar.getRawHeader(outAsar).headerString;
     info.CFBundleIdentifier = 'dev.grokbot.local';
     info.NSLocalNetworkUsageDescription = 'Connect to your Grok Bot Host on the local network.';

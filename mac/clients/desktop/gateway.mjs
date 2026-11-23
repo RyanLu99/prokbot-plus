@@ -47,7 +47,9 @@ export function createGateway(config, onUnauthorized, onConnected, onStateChange
   async function command(method, args = {}, signal) {
     if (lifetime.signal.aborted) throw new Error(grokText('已退出连接，请重新连接。', 'Disconnected. Connect again.'));
     if (method === 'getServerAgentRoster') return { status: 'disabled' };
-    if (method === 'getMainAgent') return { agentId: null };
+    if (method === 'getMainAgent' || method === 'ensureDefaultMainAgent') return { agentId: null };
+    if (method === 'setMainAgent') return { agentId: typeof args?.agentId === 'string' ? args.agentId : null };
+    if (method === 'dismissAgentSuggestions' || method === 'confirmTeachLearningPrompt') return null;
     if (method === 'resolveAgentCreation') return { kind: 'box' };
     if (method === 'restoreTemporalAgentRouting' || method === 'noteMountedAgent') return null;
     if (method === 'createAgent') { const { creationRoute, ...rest } = args; args = rest; }
