@@ -186,8 +186,9 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
       forwarding and diagnostics; ios/tools/build_ios_127_recipe.py,
       ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/ provide the
       deterministic HBC 98 parser, auditor, 24-RPC BackendClient local bypass
-      table and recipe generators. Only deterministic byte patches are stored
-      in the repository.
+      table, pinned cloud_canvas_skill/grok_bot_canvas_skill feature gates in
+      buildPinnedGate (fn#19464), and recipe generators. Only deterministic
+      byte patches are stored in the repository.
 
 Third-party components
 ----------------------

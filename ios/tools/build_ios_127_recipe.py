@@ -81,7 +81,7 @@ EXPECTED_UNPAIRED_127_SHA256 = (
     '71908b73b5f4522b8b5d439b446577b969661085eb3877c34a00ccdcab7509d5'
 )
 EXPECTED_GATEWAY_127_SHA256 = (
-    '2a5634ffc59a87238dfc9de7feacf672f405b9081aeeed3bc8f4fca9c3e80901'
+    '17595b1bb89cf33c6aa6ce298958869e9594115ac6cf133899f79b8780f46bc6'
 )
 NATIVE_PLUGIN_ENTRIES_OFFSET = 31099614
 
@@ -116,6 +116,13 @@ BACKEND_LOCAL_BYPASS_RPCS = (
     'aiserver.v1.DashboardService/GetCanvasShareAccess',
     'aiserver.v1.DashboardService/UpdateCanvasShareAccess',
     'aiserver.v1.DashboardService/RefreshCanvasSources',
+)
+
+BUILD_PINNED_GATE_FUNCTION = 19464
+PINNED_ENABLED_FEATURE_GATES = (
+    # Enable inline native Page preview cards in chat (Statsig is disabled in local mode).
+    'cloud_canvas_skill',
+    'grok_bot_canvas_skill',
 )
 
 STOCK_127_FUNCTION_COUNT = 91316
@@ -777,6 +784,121 @@ def assert_backend_local_bypass(file: HBCFile, label: str) -> None:
             )
 
 
+def build_pinned_feature_gates_body(
+    stock: HBCFile,
+    fn_idx: int,
+    strs,
+    target_by_text: Mapping[str, int],
+) -> bytes:
+    """Prepend locally pinned feature gates to ``buildPinnedGate``.
+
+    Because local/self-hosted builds disable Statsig (``isStatsigDisabled -> true``),
+    every ``useFeatureGate`` / ``useFeatureGateWhen`` / ``resolveFeatureGate`` call
+    falls back to ``GENERATED_FLAG_DEFAULTS``. Pinning selected gates in
+    ``buildPinnedGate`` cleanly enables them across all gate hooks before falling
+    through to the stock ``multiAccount`` check.
+
+    Register note: stock ``buildPinnedGate`` has ``non_pointer_reg_count == 1``
+    (``r0`` holds non-pointers such as booleans/undefined; ``r1+`` hold pointers).
+    Keep string values in ``r2``/``r3`` and only write ``true`` into ``r0``.
+    """
+
+    opcodes = stock.opcodes
+    eh = effective_header(stock, fn_idx)
+    if strs[eh.function_name].text != 'buildPinnedGate':
+        raise ValueError(
+            f'Function {fn_idx} is {strs[eh.function_name].text!r}, expected buildPinnedGate'
+        )
+    if eh.non_pointer_reg_count != 1 or eh.frame_size < 4:
+        raise ValueError(
+            f'buildPinnedGate fn#{fn_idx} register layout changed: '
+            f'non_pointer={eh.non_pointer_reg_count}, frame_size={eh.frame_size}'
+        )
+    stock_body = stock.data[eh.offset:eh.offset + eh.bytecode_size]
+    if len(stock_body) != 61:
+        raise ValueError(
+            f'buildPinnedGate fn#{fn_idx} stock body is {len(stock_body)} bytes, expected 61'
+        )
+    stock_insns = opcodes.decode(stock_body, 0, len(stock_body))
+    if not stock_insns or stock_insns[0].name != 'GetParentEnvironment':
+        raise ValueError(f'buildPinnedGate fn#{fn_idx} prologue moved')
+
+    prefix_load = _encode_ins(opcodes, 'LoadParam', 2, 1)
+    load_chunks: list[bytes] = []
+    for gate_name in PINNED_ENABLED_FEATURE_GATES:
+        sid = target_by_text.get(gate_name)
+        if sid is None:
+            raise ValueError(f'Missing feature gate string in 1.27.0 HBC: {gate_name!r}')
+        load_chunks.append(_encode_load_const_string(opcodes, 3, sid))
+
+    jump_len = 7  # JStrictEqualLong: op(1) + Addr32(4) + Reg8(1) + Reg8(1)
+    ret_true = _encode_ins(opcodes, 'LoadConstTrue', 0) + _encode_ins(opcodes, 'Ret', 0)
+    skip_ret = _encode_ins(opcodes, 'Jmp', 2 + len(ret_true))
+    if len(skip_ret) != 2 or len(ret_true) != 4:
+        raise AssertionError('Unexpected buildPinnedGate return stub size')
+
+    checks_len = sum(len(chunk) + jump_len for chunk in load_chunks)
+    ret_true_offset = len(prefix_load) + checks_len + len(skip_ret)
+
+    out = bytearray(prefix_load)
+    for chunk in load_chunks:
+        out.extend(chunk)
+        jump_offset = len(out)
+        out.extend(_encode_ins(opcodes, 'JStrictEqualLong', ret_true_offset - jump_offset, 2, 3))
+    out.extend(skip_ret)
+    if len(out) != ret_true_offset:
+        raise AssertionError('buildPinnedGate return-true offset mismatch')
+    out.extend(ret_true)
+    out.extend(stock_body)
+    body = bytes(out)
+    opcodes.decode(body, 0, len(body))
+    return body
+
+
+def assert_pinned_feature_gates(file: HBCFile, label: str) -> None:
+    """Verify buildPinnedGate pins every locally enabled feature gate to true."""
+
+    strs = hbc_strings(file)
+    eh = effective_header(file, BUILD_PINNED_GATE_FUNCTION)
+    if strs[eh.function_name].text != 'buildPinnedGate':
+        raise AssertionError(
+            f'{label}: fn#{BUILD_PINNED_GATE_FUNCTION} is not buildPinnedGate'
+        )
+    body = file.data[eh.offset:eh.offset + eh.bytecode_size]
+    insns = file.opcodes.decode(body, 0, len(body))
+    by_offset = {ins.offset: ins for ins in insns}
+    if not insns or insns[0].name != 'LoadParam' or insns[0].operands != (2, 1):
+        raise AssertionError(
+            f'{label}: buildPinnedGate does not load gate name into r2'
+        )
+    matched: set[str] = set()
+    for idx_i in range(len(insns) - 1):
+        cur, nxt = insns[idx_i], insns[idx_i + 1]
+        if (
+            cur.name in ('LoadConstString', 'LoadConstStringLongIndex')
+            and cur.operands[0] == 3
+            and nxt.name == 'JStrictEqualLong'
+            and nxt.operands[1:] == (2, 3)
+        ):
+            target_off = nxt.offset + nxt.operands[0]
+            ret_load = by_offset.get(target_off)
+            ret_ins = by_offset.get(target_off + 2)
+            if (
+                ret_load is not None
+                and ret_load.name == 'LoadConstTrue'
+                and ret_load.operands == (0,)
+                and ret_ins is not None
+                and ret_ins.name == 'Ret'
+                and ret_ins.operands == (0,)
+            ):
+                matched.add(strs[cur.operands[1]].text)
+    missing = sorted(set(PINNED_ENABLED_FEATURE_GATES) - matched)
+    if missing:
+        raise AssertionError(
+            f'{label}: buildPinnedGate missing pinned feature gates: {missing}'
+        )
+
+
 def _assert_build_live_env_slot(stock: HBCFile, strs) -> None:
     """Confirm buildLive still loads DevGatewayOverride from parent env slot 60."""
 
@@ -1130,6 +1252,16 @@ def build_gateway(
     opcodes.decode(body_skm, 0, len(body_skm))
     replacements[SKILL_DETAIL_MODULE_FUNCTION] = FunctionEdit(body=body_skm)
 
+    # 14b. buildPinnedGate (fn#19464): pin inline Canvas/Pages preview gates to true.
+    h_pin = effective_header(stock, BUILD_PINNED_GATE_FUNCTION)
+    body_pin = build_pinned_feature_gates_body(
+        stock, BUILD_PINNED_GATE_FUNCTION, strs, target_by_text
+    )
+    req_pin = body_requirements(opcodes, body_pin)
+    meta_pin = FunctionMetadata.from_header(h_pin)
+    require_metadata(req_pin, meta_pin, label=f'buildPinnedGate fn#{BUILD_PINNED_GATE_FUNCTION}')
+    replacements[BUILD_PINNED_GATE_FUNCTION] = FunctionEdit(body=body_pin, metadata=meta_pin)
+
     # 15. Semantically port the 22 complex functions from verified gateway 1.26.0.
     ported_records: list[dict[str, object]] = []
     for src_idx, dst_idx in PORTED_FUNCTIONS.items():
@@ -1229,6 +1361,7 @@ def build_gateway(
     assert_chat_avatar_motion(target, 'Generated 1.27.0 gateway template')
     assert_native_plugin_entries_hidden(target, 'Generated 1.27.0 gateway template')
     assert_backend_local_bypass(target, 'Generated 1.27.0 gateway template')
+    assert_pinned_feature_gates(target, 'Generated 1.27.0 gateway template')
     structural_audit = audit_hbc(target)
     structural_audit.require_ok('Generated 1.27.0 gateway template')
 
@@ -1242,6 +1375,7 @@ def build_gateway(
         'chatAvatarMotion': 'live',
         'nativePluginEntriesHidden': NATIVE_PLUGIN_ENTRIES_FUNCTION,
         'mobileSessionConvergenceBypass': MOBILE_SESSION_CONVERGENCE_FUNCTION,
+        'pinnedEnabledFeatureGates': list(PINNED_ENABLED_FEATURE_GATES),
         'portedFunctions': ported_records,
         'structuralAudit': structural_audit.as_dict(),
     }
