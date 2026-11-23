@@ -1,5 +1,5 @@
 import { $, node, item, empty, iconButton, dialog as wireDialog } from './ui.js';
-import { t, locale } from './i18n.js';
+import { t, html, locale } from './i18n.js';
 import { clientId } from './ids.js';
 
 export function createVoiceEditor({ api, toast, busy }) {
@@ -14,11 +14,26 @@ export function createVoiceEditor({ api, toast, busy }) {
   function errorText(value) {
     const messages = {
       'Voice chat is not configured': '请启用语音通话', 'Voice endpoint is required': '请输入接口地址',
+      'Invalid voice endpoint': '语音接口地址无效',
       'Fish Audio API key is required': '请输入 Fish Audio API Key',
       'Choose a Fish voice or enter a reference ID': '请选择音色或填写音色 ID',
       'Could not load voice library': '无法读取音色，可手动填写音色 ID',
       'A Fish speech key with the same service origin is required': '请先保存同服务的 Fish 识别密钥',
+      'Speech API key reuse requires Fish Audio': '仅 Fish Audio 支持复用识别服务 API Key',
       'Voice model is required': '请输入语音模型', 'Voice is required': '请输入音色',
+      'Voice speed must be 0.5–2': '语速必须在 0.5 到 2 之间',
+      'Invalid voice latency': '语音延迟配置无效',
+      'Voice timeout must be 1000–120000 ms': '语音超时必须在 1000 到 120000 毫秒之间',
+      'Unknown voice provider': '不支持的语音合成服务',
+      'Invalid voice selection': '自动选音色配置无效',
+      'Invalid automatic voice selection value': '自动选音色开关值无效',
+      'Too many voice candidates': '候选音色数量过多',
+      'Invalid voice candidate': '候选音色格式无效',
+      'Invalid voice candidate ID': '候选音色 ID 无效或重复',
+      'Invalid voice candidate name': '请输入有效的候选音色名称',
+      'Voice candidate does not match its provider': '候选音色与所选合成服务不匹配',
+      'Invalid voice candidate keywords': '候选音色关键词无效或过多',
+      'Invalid voice candidate languages': '候选音色语言代码无效（请填写如 zh、en）',
       'Voice service API credit is insufficient': '语音服务额度不足',
       'Voice service rejected the API key': '语音服务拒绝了 API Key',
       'Voice synthesis timed out': '语音合成超时', 'Could not reach the voice service': '无法连接语音服务',
@@ -76,16 +91,16 @@ export function createVoiceEditor({ api, toast, busy }) {
       referenceId: '', voice: '', keywords: [], languages: [] };
     const dialog = document.createElement('dialog'); dialog.className = 'dialog';
     const providerOptions = '<option value="fish">Fish Audio</option><option value="openai">OpenAI 兼容</option>';
-    dialog.innerHTML = `<form><div class="dialog-head"><h2>${t(entry ? '编辑候选音色' : '添加候选音色')}</h2><button type="button" data-close class="icon-btn" aria-label="关闭">${iconButton('close', t('关闭')).innerHTML}</button></div>
-      <div class="dialog-body"><label class="field">${t('名称')}<input name="name" maxlength="120" required /></label>
-      <label class="field">${t('合成服务')}<select name="provider">${providerOptions}</select></label>
-      <label id="candidate-reference" class="field">${t('音色 ID')}<input name="referenceId" maxlength="200" /></label>
-      <label id="candidate-voice" class="field">${t('音色')}<input name="voice" maxlength="200" /></label>
-      <label class="field">${t('关键词')}<input name="keywords" maxlength="1000" placeholder="${t('用逗号分隔，例如：研究、分析、research')}" /></label>
-      <label class="field">${t('语言')}<input name="languages" maxlength="160" placeholder="${t('用逗号分隔，例如：zh、en')}" /></label>
-      <p class="hint">${t('仅按 Bot 的名称、标题、说明和角色匹配；关键词不命中时保留默认音色。')}</p>
+    dialog.innerHTML = html(`<form><div class="dialog-head"><h2>${entry ? '编辑候选音色' : '添加候选音色'}</h2><button type="button" data-close class="icon-btn" aria-label="关闭">${iconButton('close', t('关闭')).innerHTML}</button></div>
+      <div class="dialog-body"><label class="field">名称<input name="name" maxlength="120" required /></label>
+      <label class="field">合成服务<select name="provider">${providerOptions}</select></label>
+      <label id="candidate-reference" class="field">音色 ID<input name="referenceId" maxlength="200" /></label>
+      <label id="candidate-voice" class="field">音色<input name="voice" maxlength="200" /></label>
+      <label class="field">关键词<input name="keywords" maxlength="1000" placeholder="用逗号或顿号分隔，例如：研究、分析、research" /></label>
+      <label class="field">语言<input name="languages" maxlength="160" placeholder="用逗号或顿号分隔，例如：zh、en" /></label>
+      <p class="hint">仅按 Bot 的名称、标题和说明匹配；关键词不命中时保留默认音色。</p>
       <p class="error" data-candidate-error role="alert" hidden></p></div>
-      <div class="dialog-foot"><button type="button" data-close class="btn">${t('取消')}</button><button type="submit" class="btn btn-primary">${t('保存')}</button></div></form>`;
+      <div class="dialog-foot"><button type="button" data-close class="btn">取消</button><button type="submit" class="btn btn-primary">保存</button></div></form>`);
     $('[data-panel=speech]').append(dialog);
     const candidateForm = $('form', dialog), candidateFields = candidateForm.elements;
     const candidateError = $('[data-candidate-error]', dialog);
@@ -102,7 +117,7 @@ export function createVoiceEditor({ api, toast, busy }) {
     candidateForm.onsubmit = event => {
       event.preventDefault();
       candidateError.hidden = true;
-      const split = value => value.split(/[,，]/).map(item => item.trim()).filter(Boolean);
+      const split = value => value.split(/[,，、;；]/).map(item => item.trim()).filter(Boolean);
       const provider = candidateFields.provider.value;
       const next = { id: current.id, name: candidateFields.name.value.trim(), provider,
         referenceId: provider === 'fish' ? candidateFields.referenceId.value.trim() : '',

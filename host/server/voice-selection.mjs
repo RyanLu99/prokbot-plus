@@ -2,7 +2,7 @@
 // describe the roles and languages they suit; no extra model request is needed per call.
 const text = value => typeof value === 'string' ? value.normalize('NFKC').toLowerCase().replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
-const profileFields = ['name', 'title', 'description', 'purpose', 'role'];
+const profileFields = ['name', 'title', 'description'];
 
 export function profileText(agent) {
   return profileFields.map(key => text(agent?.[key])).filter(Boolean).join(' ').slice(0, 5000);

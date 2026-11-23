@@ -333,8 +333,6 @@ export async function createSelfHostServer(options = {}) {
             ...(includeProfile ? {
               title: typeof item.title === 'string' ? item.title.slice(0, 500) : '',
               description: typeof item.description === 'string' ? item.description.slice(0, 4000) : '',
-              purpose: typeof item.purpose === 'string' ? item.purpose.slice(0, 2000) : '',
-              role: typeof item.role === 'string' ? item.role.slice(0, 500) : '',
             } : {}),
             isRunning: Boolean(item.isRunning),
             isGroup: Boolean(item.isGroup),
@@ -376,7 +374,7 @@ export async function createSelfHostServer(options = {}) {
     }
     admin(request);
     if (method === 'GET' && path === '/admin/api/voice') return sendJson(response, 200, voiceConfig.publicConfig());
-    if (method === 'PUT' && path === '/admin/api/voice') return sendJson(response, 200, await voiceConfig.save(await jsonBody(request)));
+    if (method === 'PUT' && path === '/admin/api/voice') return sendJson(response, 200, await voiceConfig.save(await jsonBody(request, 512 * 1024)));
     if (method === 'POST' && path === '/admin/api/voice/voices') {
       limiter.check(`voice-catalog:${request.socket.remoteAddress}`, 30);
       const input = await jsonBody(request);

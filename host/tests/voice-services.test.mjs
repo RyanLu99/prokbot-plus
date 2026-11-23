@@ -111,8 +111,17 @@ test('automatic selection chooses the strongest matching candidate and otherwise
 
   const selected = value.config.resolveSynthesisConfig({ name: 'Research Bot', description: 'Deep analysis and research.' });
   assert.equal(selected.voice, 'sage');
-  assert.deepEqual(selected.selectedVoice, { id: 'analyst', name: 'Analyst', matchedKeywords: ['research', 'analysis'], language: 'en' });
+  assert.equal(Object.hasOwn(selected, 'selectedVoice'), false);
   assert.equal(value.config.resolveSynthesisConfig({ name: 'General Bot' }).voice, 'alloy');
+  // Internal Host fields such as purpose ("plugin-auth", "disk-saver") must not match or skew language detection.
+  assert.equal(
+    selectVoiceCandidate(
+      { enabled: true, candidates: [{ id: 'plug', provider: 'openai', voice: 'sage', keywords: ['plugin', 'auth'], languages: ['en'] }] },
+      'openai',
+      { name: '日常助手', purpose: 'plugin-auth', role: 'plugin' },
+    ),
+    null,
+  );
   assert.equal(selectVoiceCandidate({ enabled: false, candidates: [{ provider: 'openai', voice: 'sage', keywords: ['research'] }] }, 'openai', { name: 'Research' }), null);
   assert.equal(selectVoiceCandidate({ enabled: true, candidates: [
     { id: 'zulu', provider: 'openai', keywords: ['research'], languages: [] },

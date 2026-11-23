@@ -350,14 +350,16 @@ class AdminUI(unittest.TestCase):
         page = self.start(view='speech')
         page.locator('#voice-candidate-add').click()
         dialog = page.locator('dialog[open]')
+        self.assertEqual(dialog.locator('button[data-close].icon-btn').get_attribute('aria-label'), 'Close')
+        self.assertIn('OpenAI Compatible', dialog.locator('[name=provider] option[value=openai]').inner_text())
         dialog.locator('[name=name]').fill('Incomplete voice')
         dialog.locator('button[type=submit]').click()
         expect(dialog.locator('[data-candidate-error]')).to_be_visible()
         dialog.locator('[name=name]').fill('Research voice')
         dialog.locator('[name=provider]').select_option('openai')
         dialog.locator('[name=voice]').fill('sage')
-        dialog.locator('[name=keywords]').fill('research, analysis')
-        dialog.locator('[name=languages]').fill('en')
+        dialog.locator('[name=keywords]').fill('研究、分析；research, analysis')
+        dialog.locator('[name=languages]').fill('zh、en')
         dialog.locator('button[type=submit]').click()
         expect(page.locator('#voice-candidates')).to_contain_text('Research voice')
         with page.expect_request(lambda r: r.url.endswith('/admin/api/voice') and r.method == 'PUT'):
@@ -366,7 +368,7 @@ class AdminUI(unittest.TestCase):
         self.capture('voice-selection', saved=saved)
         self.assertEqual(saved['selection'], {'enabled': True, 'candidates': [
             {'id': saved['selection']['candidates'][0]['id'], 'name': 'Research voice', 'provider': 'openai',
-             'referenceId': '', 'voice': 'sage', 'keywords': ['research', 'analysis'], 'languages': ['en']}
+             'referenceId': '', 'voice': 'sage', 'keywords': ['研究', '分析', 'research', 'analysis'], 'languages': ['zh', 'en']}
         ]})
 
 

@@ -14,7 +14,7 @@ const defaults = { version: 1, enabled: false, tts: {
   provider: 'fish', endpoint: voiceProviders.fish.endpoint, model: '', referenceId: '', voice: '',
   apiKeySource: 'own', apiKey: '', speed: 1, latency: 'balanced', timeoutMs: 60_000,
 }, selection: { enabled: true, candidates: [] } };
-const MAX_VOICE_CANDIDATES = 100;
+const MAX_VOICE_CANDIDATES = 50;
 const MAX_CANDIDATE_KEYWORDS = 24;
 const MAX_CANDIDATE_LANGUAGES = 8;
 const disabledSelection = Object.freeze({ enabled: false, candidates: [] });
@@ -173,9 +173,7 @@ export class VoiceConfig {
     const selected = selectVoiceCandidate(this.store.value.selection ?? disabledSelection, base.provider, agent);
     if (!selected) return base;
     const { candidate } = selected;
-    const { id } = candidate;
-    return { ...base, referenceId: candidate.referenceId || base.referenceId, voice: candidate.voice || base.voice,
-      selectedVoice: { id, name: candidate.name, matchedKeywords: selected.matchedKeywords, language: selected.language } };
+    return { ...base, referenceId: candidate.referenceId || base.referenceId, voice: candidate.voice || base.voice };
   }
   async close() { await this.store.tail; }
 }
