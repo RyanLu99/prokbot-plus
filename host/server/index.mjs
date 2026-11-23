@@ -302,7 +302,7 @@ export async function createSelfHostServer(options = {}) {
     }
     throw new HttpError(404, "页面不存在");
   }
-  async function hostStatus() {
+  async function hostStatus({ includeProfile = false } = {}) {
     try {
       const result = await fetch(new URL("/api/listAgents", hostUrl), {
         method: "POST",
@@ -330,6 +330,12 @@ export async function createSelfHostServer(options = {}) {
           .map((item) => ({
             id: item.id,
             name: item.name,
+            // Voice selection reads these local fields only for an authenticated
+            // voice-session request. Regular admin status responses omit them.
+            ...(includeProfile ? {
+              title: typeof item.title === 'string' ? item.title.slice(0, 500) : '',
+              description: typeof item.description === 'string' ? item.description.slice(0, 4000) : '',
+            } : {}),
             isRunning: Boolean(item.isRunning),
             isGroup: Boolean(item.isGroup),
           })),
@@ -338,9 +344,9 @@ export async function createSelfHostServer(options = {}) {
       return { connected: false, agents: [] };
     }
   }
-  async function verifyAgent(agentId) {
+  async function verifyAgent(agentId, { includeProfile = false } = {}) {
     validateAgentId(agentId);
-    const status = await hostStatus();
+    const status = await hostStatus({ includeProfile });
     check(status.connected, 503, "Host 暂不可用，无法读取 Bot 资料库");
     const agent = status.agents.find((item) => item.id === agentId);
     check(agent, 404, "Bot 不存在");
@@ -370,7 +376,7 @@ export async function createSelfHostServer(options = {}) {
     }
     admin(request);
     if (method === 'GET' && path === '/admin/api/voice') return sendJson(response, 200, voiceConfig.publicConfig());
-    if (method === 'PUT' && path === '/admin/api/voice') return sendJson(response, 200, await voiceConfig.save(await jsonBody(request)));
+    if (method === 'PUT' && path === '/admin/api/voice') return sendJson(response, 200, await voiceConfig.save(await jsonBody(request, 512 * 1024)));
     if (method === 'POST' && path === '/admin/api/voice/voices') {
       limiter.check(`voice-catalog:${request.socket.remoteAddress}`, 30);
       const input = await jsonBody(request);
@@ -632,8 +638,8 @@ export async function createSelfHostServer(options = {}) {
     }
     if (request.method === 'POST' && path === '/local/voice/session') {
       const found = device(request); limiter.check(`voice-session:${found.id}`, 10);
-      const { agentId, audioProcessing } = await jsonBody(request, 2048); await verifyAgent(agentId);
-      return sendJson(response, 200, voice.issue(found.id, agentId, origin, audioProcessing));
+      const { agentId, audioProcessing } = await jsonBody(request, 2048);
+      return sendJson(response, 200, voice.issue(found.id, await verifyAgent(agentId, { includeProfile: true }), origin, audioProcessing));
     }
     if (request.method === 'GET' && path === '/local/voice/status') {
       device(request);
