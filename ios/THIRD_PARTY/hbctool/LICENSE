@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2020 Bongjun Jang (hbctool contributors)
+Copyright (c) 2020 Pongsakorn Sommalai <bongtrop@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,5 +21,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Format reference:
-https://github.com/Kirlif/hbctool (opcode JSON table layout used by
-ios/tools/hbc98/opcodes-v98.json).
+https://github.com/bongtrop/hbctool (and fork https://github.com/Kirlif/hbctool;
+opcode JSON table layout used by ios/tools/hbc98/opcodes-v98.json).

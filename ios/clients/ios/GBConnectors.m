@@ -89,7 +89,7 @@ static NSData *GBLocalPreferenceResponse(NSURLRequest *request) {
 @end
 static IMP GBDefaultConfig, GBEphemeralConfig, GBSessionWithConfig, GBSessionWithConfigDelegate;
 static NSURLSessionConfiguration *GBAddProtocol(NSURLSessionConfiguration *config) {
-  if (!config) return nil;
+  if (!config || config.identifier.length > 0) return config;
   NSMutableArray *classes = [config.protocolClasses mutableCopy] ?: [NSMutableArray new];
   if (![classes containsObject:GBConnectorProtocol.class]) [classes insertObject:GBConnectorProtocol.class atIndex:0];
   if (![classes containsObject:GBPrivacyProtocolClass()]) [classes insertObject:GBPrivacyProtocolClass() atIndex:0];
@@ -105,12 +105,14 @@ static id GBEphemeral(id self, SEL selector) { return GBAddProtocol(((id(*)(id,S
 // RCTSetCustomNSURLSessionConfigurationProvider, so any custom configuration
 // provider installed by the app keeps its headers, caching, and protocols while
 // our local NSURLProtocols stay prepended on a copy of the configuration.
+// Background session configurations (non-empty identifier) run out-of-process and
+// do not support custom NSURLProtocol subclasses, so pass them through untouched.
 static id GBSession(id self, SEL selector, NSURLSessionConfiguration *config) {
-  NSURLSessionConfiguration *patched = config ? GBAddProtocol([config copy]) : nil;
+  NSURLSessionConfiguration *patched = (config && config.identifier.length == 0) ? GBAddProtocol([config copy]) : config;
   return ((id(*)(id,SEL,id))GBSessionWithConfig)(self, selector, patched);
 }
 static id GBSessionDelegate(id self, SEL selector, NSURLSessionConfiguration *config, id delegate, NSOperationQueue *queue) {
-  NSURLSessionConfiguration *patched = config ? GBAddProtocol([config copy]) : nil;
+  NSURLSessionConfiguration *patched = (config && config.identifier.length == 0) ? GBAddProtocol([config copy]) : config;
   return ((id(*)(id,SEL,id,id,id))GBSessionWithConfigDelegate)(self, selector, patched, delegate, queue);
 }
 void GBInstallConnectorTransport(void) {

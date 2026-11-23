@@ -34,6 +34,7 @@ class PairingCredentialsTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("GBSignOutLabels", bootstrap)
         self.assertIn("GBIsSettingsSignOutContext", bootstrap)
+        self.assertNotIn('@"Account", @"账户", @"帳戶"', bootstrap)
         self.assertIn("GBClearHostSettingsIdentifier", bootstrap)
         self.assertIn("GBHasAncestorPluginTag", bootstrap)
         self.assertIn("GBSubtreeHasStyledHostButton", bootstrap)
@@ -56,6 +57,7 @@ class PairingCredentialsTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertNotIn("GBInstallSessionConfigurationProvider", connectors)
         self.assertIn("sessionWithConfiguration:delegate:delegateQueue:", connectors)
+        self.assertIn("config.identifier.length", connectors)
         self.assertIn("GBResolveReactSymbol", diagnostics)
         self.assertIn('@"RCTFatalException"', diagnostics)
 

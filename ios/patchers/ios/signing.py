@@ -154,14 +154,18 @@ def sign(app, identity, main_profile, extension_profiles, group, records, comman
             team = current
             prefix = current_prefix
             values = entitlements(data, info['CFBundleIdentifier'], group if records else None, bundle_id)
+            updated_info = False
             if records:
                 info['SandKeychainAccessGroups'] = values['keychain-access-groups']
-                if isinstance(info.get('GrokAppProtection'), dict):
-                    info['GrokAppProtection'] = {
-                        **info['GrokAppProtection'],
-                        'appGroupIdentifiers': [group] if group else [],
-                        'keychainAccessGroups': values['keychain-access-groups'],
-                    }
+                updated_info = True
+            if isinstance(info.get('GrokAppProtection'), dict):
+                info['GrokAppProtection'] = {
+                    **info['GrokAppProtection'],
+                    'appGroupIdentifiers': list(values.get('com.apple.security.application-groups', [])),
+                    'keychainAccessGroups': list(values['keychain-access-groups']),
+                }
+                updated_info = True
+            if updated_info:
                 (target / 'Info.plist').write_bytes(plistlib.dumps(info))
             shutil.copy2(path, target / 'embedded.mobileprovision')
         else:

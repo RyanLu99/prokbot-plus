@@ -47,15 +47,27 @@ test("mobile-rpc-compat handles all 8 Canvas RPCs and both MCP tool permission R
 
   assert.deepEqual(mobileCompatRpc("GetGrokBotMcpToolPermissions"), {
     status: 200,
-    body: { permissions: [] },
+    body: { servers: [] },
   });
-  assert.deepEqual(mobileCompatRpc("SetGrokBotMcpToolPermissions"), {
-    status: 200,
-    body: {},
-  });
+  const setMcpRes = mobileCompatRpc("SetGrokBotMcpToolPermissions");
+  assert.equal(setMcpRes.status, 501);
+  assert.equal(setMcpRes.body.code, "unimplemented");
+  assert.equal(typeof setMcpRes.body.message, "string");
 
   assert.throws(
     () => mobileCompatRpc("UnknownMethod"),
     (err) => err?.status === 404,
   );
+
+  // If a method is registered in mobileCompatRpcMethods without a handler branch,
+  // fail loudly instead of silently returning 501.
+  mobileCompatRpcMethods.add("__TestUnhandledMethod");
+  try {
+    assert.throws(
+      () => mobileCompatRpc("__TestUnhandledMethod"),
+      /Unhandled mobile compat RPC method: __TestUnhandledMethod/,
+    );
+  } finally {
+    mobileCompatRpcMethods.delete("__TestUnhandledMethod");
+  }
 });

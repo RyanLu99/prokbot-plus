@@ -111,7 +111,22 @@ int main(void) { @autoreleasepool {
   verifyLocalEmptyJson(session, userUrl);
   CHECK(httpSessionCalls == 0);
   CHECK(handledPaths.count == 2);
-  puts("PASS: iOS Auto-review local preference RPC interception");
+
+  // Foreground configs receive local protocols; background configs are left untouched.
+  NSURLSessionConfiguration *ephemeral = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+  NSURLSessionConfiguration *patchedEphemeral = GBAddProtocol(ephemeral);
+  CHECK([patchedEphemeral.protocolClasses containsObject:GBConnectorProtocol.class]);
+
+  NSURLSessionConfiguration *bg =
+      [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:@"dev.grokbot.test.bg"];
+  NSArray *bgProtocolsBefore = [bg.protocolClasses copy];
+  NSURLSessionConfiguration *bgResult = GBAddProtocol(bg);
+  CHECK(bgResult == bg);
+  CHECK(![bgResult.protocolClasses containsObject:GBConnectorProtocol.class]);
+  CHECK((bgProtocolsBefore == nil && bgResult.protocolClasses == nil) ||
+        [bgResult.protocolClasses isEqual:bgProtocolsBefore]);
+
+  puts("PASS: iOS Auto-review local preference RPC interception and background session bypass");
   return 0;
 } }
 """

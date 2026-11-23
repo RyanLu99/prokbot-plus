@@ -116,12 +116,83 @@ class EntitlementTests(unittest.TestCase):
             updated_cfg = json.loads((app / 'EXConstants.bundle' / 'app.config').read_text(encoding='utf-8'))
             self.assertEqual(updated_cfg['ios']['appleTeamId'], 'TEAMID1234')
             self.assertEqual(updated_cfg['extra']['appleTeamId'], 'TEAMID1234')
+            main_info = plistlib.loads((app / 'Info.plist').read_bytes())
+            self.assertEqual(main_info['GrokAppProtection']['appGroupIdentifiers'], ['group.dev.example.app'])
+            self.assertEqual(
+                main_info['GrokAppProtection']['keychainAccessGroups'],
+                ['PREFIX9999.dev.example.app', 'PREFIX9999.dev.example.app.shared'],
+            )
             ext_info = plistlib.loads((ext / 'Info.plist').read_bytes())
             self.assertEqual(ext_info['GrokAppProtection']['appGroupIdentifiers'], ['group.dev.example.app'])
             self.assertEqual(
                 ext_info['GrokAppProtection']['keychainAccessGroups'],
                 ['PREFIX9999.dev.example.app.widgets', 'PREFIX9999.dev.example.app.shared'],
             )
+
+    def test_sign_writes_empty_app_group_identifiers_when_profile_lacks_requested_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            app = root / 'Demo.app'
+            ext = app / 'PlugIns' / 'Widgets.appex'
+            (app / 'EXConstants.bundle').mkdir(parents=True)
+            ext.mkdir(parents=True)
+            (app / 'Info.plist').write_bytes(plistlib.dumps({
+                'CFBundleIdentifier': 'dev.example.app',
+                'CFBundleExecutable': 'Demo',
+                'GrokAppProtection': {'appGroupIdentifiers': ['group.dev.example.app'], 'keychainAccessGroups': []},
+            }))
+            (ext / 'Info.plist').write_bytes(plistlib.dumps({
+                'CFBundleIdentifier': 'dev.example.app.widgets',
+                'CFBundleExecutable': 'Widgets',
+                'GrokAppProtection': {'appGroupIdentifiers': ['group.dev.example.app'], 'keychainAccessGroups': []},
+            }))
+            (app / 'Demo').write_bytes(b'not-macho')
+            (ext / 'Widgets').write_bytes(b'not-macho')
+            cfg = json.dumps({'ios': {'appleTeamId': 'OLDTEAM'}, 'extra': {'appleTeamId': 'OLDTEAM'}}).encode()
+            (app / 'EXConstants.bundle' / 'app.config').write_bytes(cfg.ljust(512, b' '))
+            main_mp = root / 'main.mobileprovision'
+            ext_mp = root / 'ext.mobileprovision'
+            main_mp.write_bytes(b'main')
+            ext_mp.write_bytes(b'ext')
+
+            def fake_profile(path):
+                bid = 'dev.example.app' if path == main_mp else 'dev.example.app.widgets'
+                return {
+                    'Name': 'TestNoGroup',
+                    'ApplicationIdentifierPrefix': ['PREFIX9999'],
+                    'TeamIdentifier': ['TEAMID1234'],
+                    'Entitlements': {
+                        'application-identifier': f'PREFIX9999.{bid}',
+                        'keychain-access-groups': ['PREFIX9999.*'],
+                        'com.apple.security.application-groups': [],
+                        'get-task-allow': True,
+                    },
+                }
+
+            stderr = io.StringIO()
+            with redirect_stderr(stderr), \
+                 patch.object(signing, 'profile', side_effect=fake_profile), \
+                 patch.object(signing.subprocess, 'run') as mock_run:
+                signing.sign(
+                    app=app,
+                    identity='TEST',
+                    main_profile=main_mp,
+                    extension_profiles={'Widgets.appex': ext_mp},
+                    group='group.dev.example.app',
+                    records=[{'name': 'Widgets.appex'}],
+                    commands=lambda _b: [],
+                    output=root,
+                )
+            self.assertTrue(mock_run.called)
+            self.assertIn('does not authorize App Group group.dev.example.app', stderr.getvalue())
+            main_info = plistlib.loads((app / 'Info.plist').read_bytes())
+            ext_info = plistlib.loads((ext / 'Info.plist').read_bytes())
+            self.assertEqual(main_info['GrokAppProtection']['appGroupIdentifiers'], [])
+            self.assertEqual(ext_info['GrokAppProtection']['appGroupIdentifiers'], [])
+            main_ent = plistlib.loads((root / 'Demo.app.entitlements.plist').read_bytes())
+            ext_ent = plistlib.loads((root / 'Widgets.appex.entitlements.plist').read_bytes())
+            self.assertNotIn('com.apple.security.application-groups', main_ent)
+            self.assertNotIn('com.apple.security.application-groups', ext_ent)
 
     def test_allowed_groups_only_returns_an_authorized_group(self):
         with tempfile.TemporaryDirectory() as directory:

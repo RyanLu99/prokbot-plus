@@ -77,9 +77,21 @@ class ReleaseOutput(unittest.TestCase):
             extensions.EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]['Widgets.appex'][1],
             extensions.EXTENSIONS_BY_RELEASE[('1.16.0', '23152')]['Widgets.appex'][1],
         )
+
+    def test_extensions_rejects_unknown_release(self):
+        sys.path.insert(0, str(PATCHER.parents[1] / 'patchers' / 'ios'))
+        import extensions  # noqa: E402
         # Unknown releases must fail closed rather than defaulting widget scheme count to 1.
         with self.assertRaisesRegex(ValueError, 'Unsupported release for extensions'):
-            extensions.prepare_extensions(self.root, 'dev.example.app', 'group.dev.example.app', lambda _b: [], release=('9.9.9', '99999'))
+            extensions.prepare_extensions(
+                self.root,
+                'dev.example.app',
+                'group.dev.example.app',
+                lambda _b: [],
+                release=('9.9.9', '99999'),
+            )
+
+    def test_rejects_duplicate_pinned_manifests(self):
         # Duplicate (version, build) manifests must be rejected by load_manifests().
         dup_pkg = self.root / 'dup-package'
         dup_patcher = dup_pkg / 'release' / PATCHER.name

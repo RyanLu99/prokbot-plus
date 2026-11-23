@@ -122,18 +122,19 @@ static NSSet<NSString *> *GBSettingsContextLabels(void) {
   static dispatch_once_t once;
   dispatch_once(&once, ^{
     set = [NSSet setWithArray:@[
-      @"Account", @"账户", @"帳戶",
+      @"dev-gateway@localhost", @"dev-gateway@localhost avatar",
       @"Auto-review", @"自动审查", @"自動審查",
+      @"Appearance", @"外观", @"外觀",
       @"Language", @"语言", @"語言",
       @"Usage", @"用量",
-      @"dev-gateway@localhost", @"dev-gateway@localhost avatar"
+      @"Bot 电脑", @"Bot Computer"
     ]];
   });
   return set;
 }
 static BOOL GBSubtreeContainsSettingsMarker(UIView *root, NSSet<NSString *> *markers, NSUInteger depth) {
   if (!root || root.hidden || root.alpha < 0.01 || depth > 24) return NO;
-  if (root.tag == 731993) return YES;
+  if (root.tag == 731993 || root.tag == 731989) return YES;
   NSString *raw = root.accessibilityLabel;
   if ([root isKindOfClass:UILabel.class]) raw = ((UILabel *)root).text;
   if (raw.length) {

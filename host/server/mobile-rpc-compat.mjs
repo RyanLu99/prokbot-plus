@@ -54,13 +54,16 @@ export function mobileCompatRpc(method) {
     };
   }
   if (method === "GetGrokBotMcpToolPermissions") {
-    return { status: 200, body: { permissions: [] } };
+    return { status: 200, body: { servers: [] } };
   }
   if (method === "SetGrokBotMcpToolPermissions") {
-    return { status: 200, body: {} };
+    return {
+      status: 501,
+      body: {
+        code: "unimplemented",
+        message: "MCP tool permissions are not configurable on this Host",
+      },
+    };
   }
-  return {
-    status: 501,
-    body: { code: "unimplemented", message: `Unsupported mobile RPC: ${method}` },
-  };
+  throw new Error(`Unhandled mobile compat RPC method: ${method}`);
 }
