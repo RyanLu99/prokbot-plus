@@ -78,14 +78,16 @@ const { workerData, parentPort } = require('node:worker_threads');
 const { dbPath, busyTimeoutMs } = workerData;
 let db;
 try {
-  let Database;
+  let DatabaseSync;
   try {
-    Database = require('better-sqlite3');
+    ({ DatabaseSync } = require('node:sqlite'));
   } catch {
-    parentPort.postMessage({ status: 'skipped', reason: 'better-sqlite3 unavailable' });
+    parentPort.postMessage({ status: 'skipped', reason: 'node:sqlite unavailable' });
     process.exit(0);
   }
-  db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: busyTimeoutMs });
+  const timeout = Number.isFinite(busyTimeoutMs) && busyTimeoutMs >= 0 ? Math.trunc(busyTimeoutMs) : 5000;
+  db = new DatabaseSync(dbPath, { readOnly: true });
+  db.exec(\`PRAGMA busy_timeout = \${timeout}\`);
   const row = db.prepare('PRAGMA quick_check(1)').get();
   const value = row ? Object.values(row)[0] : null;
   if (value === 'ok') {
@@ -95,10 +97,22 @@ try {
   }
 } catch (error) {
   const code = String(error?.code ?? '');
+  const errstr = String(error?.errstr ?? '');
+  const errcode = Number.isInteger(error?.errcode) ? (error.errcode & 0xff) : -1;
   const message = String(error?.message ?? error);
-  if (code.includes('BUSY') || code.includes('LOCKED') || /database is locked/i.test(message)) {
+  if (
+    errcode === 5 || errcode === 6 ||
+    code.includes('BUSY') || code.includes('LOCKED') ||
+    /database is locked|database table is locked|busy/i.test(message) ||
+    /locked|busy/i.test(errstr)
+  ) {
     parentPort.postMessage({ status: 'busy', reason: message });
-  } else if (code.includes('CORRUPT') || code.includes('NOTADB') || /malformed|corrupt|not a database/i.test(message)) {
+  } else if (
+    errcode === 11 || errcode === 26 ||
+    code.includes('CORRUPT') || code.includes('NOTADB') ||
+    /malformed|corrupt|not a database/i.test(message) ||
+    /malformed|corrupt|not a database/i.test(errstr)
+  ) {
     parentPort.postMessage({ status: 'corrupt', reason: message });
   } else {
     parentPort.postMessage({ status: 'error', reason: message });
@@ -164,15 +178,26 @@ export function wrapOpenConversationBlobDb(
   } = {},
 ) {
   const io = { exists, readText, writeText, unlink };
+  const finishOriginalOpen = (dbPath, allowStamp) => {
+    try {
+      if (exists(quickCheckRequiredMarkerPath(dbPath))) {
+        unlink(quickCheckRequiredMarkerPath(dbPath));
+      }
+    } catch {}
+    if (!allowStamp) return;
+    try {
+      const afterStat = stat(dbPath);
+      if (afterStat.size > maxQuickCheckBytes) {
+        recordVerified(dbPath, afterStat, io);
+      } else if (exists(quickCheckVerifiedMarkerPath(dbPath))) {
+        unlink(quickCheckVerifiedMarkerPath(dbPath));
+      }
+    } catch {}
+  };
   return function openConversationBlobDbWithLargeDbFastPath(options) {
     if (!options?.dbPath || maxQuickCheckBytes === Number.POSITIVE_INFINITY) {
       const db = originalOpen(options);
-      if (options?.dbPath) {
-        try {
-          const info = stat(options.dbPath);
-          recordVerified(options.dbPath, info, io);
-        } catch {}
-      }
+      if (options?.dbPath) finishOriginalOpen(options.dbPath, false);
       return db;
     }
     let statInfo;
@@ -181,11 +206,9 @@ export function wrapOpenConversationBlobDb(
     } catch {
       return originalOpen(options);
     }
-    if (statInfo.size < maxQuickCheckBytes) {
+    if (statInfo.size <= maxQuickCheckBytes) {
       const db = originalOpen(options);
-      try {
-        recordVerified(options.dbPath, stat(options.dbPath), io);
-      } catch {}
+      finishOriginalOpen(options.dbPath, false);
       return db;
     }
     const recovery = options.recovery ?? bindings.DISK_RECOVERY;
@@ -194,9 +217,7 @@ export function wrapOpenConversationBlobDb(
       exists(quickCheckRequiredMarkerPath(options.dbPath))
     ) {
       const db = originalOpen(options);
-      try {
-        recordVerified(options.dbPath, stat(options.dbPath), io);
-      } catch {}
+      finishOriginalOpen(options.dbPath, true);
       return db;
     }
     let db;
@@ -207,9 +228,7 @@ export function wrapOpenConversationBlobDb(
     } catch {
       try { db?.close(); } catch {}
       const recovered = originalOpen(options);
-      try {
-        recordVerified(options.dbPath, stat(options.dbPath), io);
-      } catch {}
+      finishOriginalOpen(options.dbPath, true);
       return recovered;
     }
     if (!isVerifiedForStat(options.dbPath, statInfo, io)) {

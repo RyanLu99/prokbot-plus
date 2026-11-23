@@ -1,62 +1,15 @@
 // Compatibility handlers for newer Desktop (1.2.3+) and iOS (1.26.0+/1.27.0+)
-// gateway RPCs that are not present in the pinned stable sand-host bundle (d0a4baa).
-import { join } from 'node:path';
+// gateway RPCs that clients forward to Host and that are not present in the
+// pinned stable sand-host bundle (d0a4baa).
 import { check } from './security.mjs';
 import { validateAgentId } from './library.mjs';
-import { JsonStore } from './storage.mjs';
 
 export const clientCompatMethods = new Set([
   'searchConversation',
-  'searchMessages',
-  'searchFiles',
   'rerunAutomationFromCard',
   'runAutomationWebhook',
-  'dismissAgentSuggestions',
-  'takeTeachLearningPrompts',
-  'confirmTeachLearningPrompt',
   'resolveSkillPublishTargets',
-  'getServerAgentRoster',
-  'getMainAgent',
-  'setMainAgent',
-  'ensureDefaultMainAgent',
-  'resolveAgentCreation',
-  'restoreTemporalAgentRouting',
-  'noteMountedAgent',
-  'noteTranscriptOpened',
 ]);
-
-export class MainAgentStore {
-  constructor(dataDir) {
-    this.store = dataDir ? new JsonStore(join(dataDir, 'main-agent.json'), { version: 1, agentId: null }) : null;
-    this.data = { version: 1, agentId: null };
-  }
-  async load() {
-    if (this.store) {
-      await this.store.load();
-      const agentId = this.store.value?.agentId;
-      this.data = {
-        version: 1,
-        agentId: typeof agentId === 'string' && agentId ? agentId : null,
-      };
-    }
-    return this;
-  }
-  get() {
-    return this.data.agentId;
-  }
-  async set(agentId) {
-    const normalized = agentId === null || agentId === undefined || agentId === ''
-      ? null
-      : validateAgentId(agentId);
-    if (this.store) {
-      await this.store.mutate(state => {
-        state.agentId = normalized;
-      });
-    }
-    this.data = { version: 1, agentId: normalized };
-    return normalized;
-  }
-}
 
 function extractEntryText(entry) {
   if (!entry || typeof entry !== 'object') return '';
@@ -109,89 +62,14 @@ function entryRole(entry) {
   return 'assistant';
 }
 
-function parseOptionalLimit(raw) {
-  if (raw === undefined || raw === null) return null;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return Math.min(Math.trunc(parsed), 200);
-}
-
-function parseContinuationOffset(raw) {
-  if (typeof raw !== 'string') return 0;
-  const trimmed = raw.trim();
-  if (!/^\d+$/.test(trimmed)) return 0;
-  const offset = Number(trimmed);
-  return Number.isSafeInteger(offset) && offset >= 0 ? offset : 0;
-}
-
 function automationListFrom(result) {
   if (Array.isArray(result)) return result;
   if (Array.isArray(result?.automations)) return result.automations;
   return [];
 }
 
-export async function handleClientCompatRpc(method, input, callHost, options = {}) {
-  const mainAgentStore = options.mainAgentStore ?? null;
-
-  if (method === 'dismissAgentSuggestions') {
-    if (input?.agentId !== undefined) validateAgentId(input.agentId);
-    return null;
-  }
-  if (method === 'takeTeachLearningPrompts') return [];
-  if (method === 'confirmTeachLearningPrompt') {
-    if (input?.agentId !== undefined) validateAgentId(input.agentId);
-    return null;
-  }
+export async function handleClientCompatRpc(method, input, callHost) {
   if (method === 'resolveSkillPublishTargets') return { targets: [] };
-  if (method === 'getServerAgentRoster') return { status: 'disabled' };
-  if (method === 'getMainAgent') {
-    return { agentId: mainAgentStore ? mainAgentStore.get() : null };
-  }
-  if (method === 'setMainAgent') {
-    const nextId = input?.agentId === null || input?.agentId === undefined || input?.agentId === ''
-      ? null
-      : validateAgentId(input.agentId);
-    if (mainAgentStore) {
-      return { agentId: await mainAgentStore.set(nextId) };
-    }
-    return { agentId: nextId };
-  }
-  if (method === 'ensureDefaultMainAgent') {
-    const saved = mainAgentStore ? mainAgentStore.get() : null;
-    if (saved) return { outcome: 'hasMainAgent', agentId: saved };
-    let firstAgentId = null;
-    try {
-      const agents = await callHost('listAgents', {});
-      if (Array.isArray(agents)) {
-        const visible = agents.find(item => item && !item.isHiddenFromSidebar && typeof item.id === 'string');
-        firstAgentId = visible?.id ?? null;
-      }
-    } catch {}
-    return { outcome: 'present', agentId: firstAgentId };
-  }
-  if (method === 'resolveAgentCreation') return { kind: 'box' };
-  if (method === 'restoreTemporalAgentRouting') return null;
-  if (method === 'noteMountedAgent' || method === 'noteTranscriptOpened') {
-    if (input?.agentId !== undefined) validateAgentId(input.agentId);
-    return null;
-  }
-
-  if (method === 'searchMessages' || method === 'searchFiles') {
-    const query = typeof input?.query === 'string' ? input.query : '';
-    const target = method === 'searchMessages' ? 'searchAgents' : 'searchMedia';
-    const raw = await callHost(target, { query });
-    const all = Array.isArray(raw) ? raw : [];
-    const offset = parseContinuationOffset(input?.continuation);
-    const limit = parseOptionalLimit(input?.limit);
-    const sliced = limit === null ? all.slice(offset) : all.slice(offset, offset + limit);
-    const nextOffset = offset + sliced.length;
-    const hasMore = nextOffset < all.length;
-    return {
-      matches: sliced,
-      coverage: { kind: hasMore ? 'partial' : 'complete' },
-      ...(hasMore ? { continuation: String(nextOffset) } : {}),
-    };
-  }
 
   if (method === 'rerunAutomationFromCard') {
     const id = validateAgentId(input?.id);
@@ -207,13 +85,12 @@ export async function handleClientCompatRpc(method, input, callHost, options = {
   }
 
   if (method === 'runAutomationWebhook') {
-    const id = validateAgentId(input?.id);
+    validateAgentId(input?.id);
     check(typeof input?.automationId === 'string' && input.automationId.trim().length > 0, 400, '缺少自动化 ID');
-    const automationId = input.automationId.trim();
-    // Pinned sand-host (d0a4baa) only exposes runAgentAutomationNow without
-    // webhook context/page forwarding or a real runId; report not_offered
-    // instead of silently dropping payload data and fabricating a runId.
-    return { ok: false, result: 'not_offered', id, automationId };
+    // Pinned sand-host (d0a4baa) does not expose webhook payload/context forwarding
+    // or a real runId; fail closed with HTTP 501 so clients report failure instead
+    // of treating any 2xx response as landed.
+    check(false, 501, '此自部署 Host 暂不支持自动化 Webhook 触发');
   }
 
   if (method === 'searchConversation') {
@@ -249,21 +126,10 @@ export async function handleClientCompatRpc(method, input, callHost, options = {
         pageNextBeforeSeq !== beforeSeq &&
         entries.length > 0;
 
-      let stoppedEarly = false;
-      let stoppedCursor = undefined;
+      // Scan the entire fetched page rather than stopping mid-page: official transcript
+      // entries come from parseTranscriptEntry(row.entry) and do not include `seq`, so
+      // continuation can only resume cleanly at `page.nextBeforeSeq`.
       for (let i = entries.length - 1; i >= 0; i--) {
-        if (matches.length >= limit) {
-          stoppedEarly = true;
-          const prevChecked = entries[i + 1];
-          const remaining = entries[i];
-          stoppedCursor =
-            typeof prevChecked?.seq === 'number' && Number.isFinite(prevChecked.seq)
-              ? prevChecked.seq
-              : typeof remaining?.seq === 'number' && Number.isFinite(remaining.seq)
-                ? remaining.seq + 1
-                : pageNextBeforeSeq;
-          break;
-        }
         const entry = entries[i];
         const entryId = String(entry?.id ?? '');
         if (entryId && seen.has(entryId)) continue;
@@ -280,10 +146,6 @@ export async function handleClientCompatRpc(method, input, callHost, options = {
         });
       }
 
-      if (stoppedEarly) {
-        nextCursor = stoppedCursor;
-        break;
-      }
       if (!hasMore) {
         reachedEnd = true;
         nextCursor = undefined;

@@ -1,186 +1,228 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import {
-  MainAgentStore,
   clientCompatMethods,
   handleClientCompatRpc,
 } from '../server/client-compat-api.mjs';
 import { HttpError } from '../server/security.mjs';
 
-test('client-compat-api handles official d0a4baa shapes, pagination, errors, automations, and MainAgentStore', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'grokbot-compat-'));
-  try {
-    const mainAgentStore = await new MainAgentStore(dir).load();
-    const calls = [];
-    const fakeHost = async (method, args) => {
-      calls.push({ method, args });
-      if (method === 'getAgentTranscriptWindow') {
-        // Official d0a4baa returns { entries, nextBeforeSeq, threadCounts } — NO hasMore field.
-        if (args.beforeSeq === 100) {
-          return {
-            entries: [
-              { id: 'e0', seq: 50, role: 'user', timestampMs: 500, text: 'Older ProkBot history hit' },
-            ],
-            threadCounts: {},
-          };
-        }
-        return {
-          nextBeforeSeq: 100,
-          entries: [
-            { id: 'e1', seq: 101, role: 'user', timestampMs: 1000, text: 'hello world' },
-            { id: 'e2', seq: 102, role: 'assistant', timestampMs: 2000, parts: [{ text: 'ProkBot status check complete' }] },
-            { id: 'e3', seq: 103, kind: 'send-message', timestampMs: 3000, message: { type: 'text', content: 'ProkBot nested reply ok' } },
-          ],
-          threadCounts: {},
-        };
-      }
-      if (method === 'listAgents') {
-        return [{ id: 'a1b2c3', name: 'Main Bot', isHiddenFromSidebar: false }];
-      }
-      if (method === 'searchAgents') {
-        return [
-          { id: 'a1', title: args.query },
-          { id: 'a2', title: args.query },
-          { id: 'a3', title: args.query },
-        ];
-      }
-      if (method === 'searchMedia') {
-        return [
-          { id: 'm1', name: args.query },
-          { id: 'm2', name: args.query },
-        ];
-      }
-      if (method === 'getAgentAutomations') {
-        return [{ id: 'auto-1', name: 'Daily digest' }];
-      }
-      if (method === 'runAgentAutomationNow') return { ok: true };
-      throw new Error(`unexpected host call: ${method}`);
-    };
-
-    assert.equal(await handleClientCompatRpc('dismissAgentSuggestions', { agentId: 'a1', suggestionIds: ['s1'] }, fakeHost), null);
-    assert.deepEqual(await handleClientCompatRpc('takeTeachLearningPrompts', {}, fakeHost), []);
-    assert.equal(await handleClientCompatRpc('confirmTeachLearningPrompt', { agentId: 'a1', clientNonce: 'n1' }, fakeHost), null);
-    assert.deepEqual(await handleClientCompatRpc('resolveSkillPublishTargets', {}, fakeHost), { targets: [] });
-    assert.deepEqual(await handleClientCompatRpc('getServerAgentRoster', {}, fakeHost), { status: 'disabled' });
-    assert.deepEqual(await handleClientCompatRpc('resolveAgentCreation', {}, fakeHost), { kind: 'box' });
-    assert.equal(await handleClientCompatRpc('restoreTemporalAgentRouting', {}, fakeHost), null);
-    assert.equal(await handleClientCompatRpc('noteMountedAgent', { agentId: 'a1' }, fakeHost), null);
-    assert.equal(await handleClientCompatRpc('noteTranscriptOpened', { agentId: 'a1' }, fakeHost), null);
-
-    // MainAgentStore persistence + compliant ensureDefaultMainAgent outcome
-    assert.deepEqual(await handleClientCompatRpc('getMainAgent', {}, fakeHost, { mainAgentStore }), { agentId: null });
-    assert.deepEqual(
-      await handleClientCompatRpc('ensureDefaultMainAgent', {}, fakeHost, { mainAgentStore }),
-      { outcome: 'present', agentId: 'a1b2c3' },
-    );
-    assert.deepEqual(
-      await handleClientCompatRpc('setMainAgent', { agentId: 'a1b2c3' }, fakeHost, { mainAgentStore }),
-      { agentId: 'a1b2c3' },
-    );
-    assert.deepEqual(await handleClientCompatRpc('getMainAgent', {}, fakeHost, { mainAgentStore }), { agentId: 'a1b2c3' });
-    assert.deepEqual(
-      await handleClientCompatRpc('ensureDefaultMainAgent', {}, fakeHost, { mainAgentStore }),
-      { outcome: 'hasMainAgent', agentId: 'a1b2c3' },
-    );
-    const reloaded = await new MainAgentStore(dir).load();
-    assert.equal(reloaded.get(), 'a1b2c3');
-
-    // Invalid agentId rejected cleanly
-    await assert.rejects(
-      () => handleClientCompatRpc('searchConversation', { agentId: '../etc/passwd', query: 'x' }, fakeHost),
-      err => err instanceof HttpError && err.status === 400,
-    );
-    await assert.rejects(
-      () => handleClientCompatRpc('setMainAgent', { agentId: 'not valid!' }, fakeHost, { mainAgentStore }),
-      err => err instanceof HttpError && err.status === 400,
-    );
-
-    // searchMessages / searchFiles honor limit and continuation
-    const msgPage1 = await handleClientCompatRpc('searchMessages', { query: 'hello', limit: 2 }, fakeHost);
-    assert.deepEqual(msgPage1, {
-      matches: [{ id: 'a1', title: 'hello' }, { id: 'a2', title: 'hello' }],
-      coverage: { kind: 'partial' },
-      continuation: '2',
-    });
-    const msgPage2 = await handleClientCompatRpc(
-      'searchMessages',
-      { query: 'hello', limit: 2, continuation: msgPage1.continuation },
-      fakeHost,
-    );
-    assert.deepEqual(msgPage2, {
-      matches: [{ id: 'a3', title: 'hello' }],
-      coverage: { kind: 'complete' },
-    });
-    assert.deepEqual(
-      await handleClientCompatRpc('searchFiles', { query: 'report.pdf', limit: 1 }, fakeHost),
-      { matches: [{ id: 'm1', name: 'report.pdf' }], coverage: { kind: 'partial' }, continuation: '1' },
-    );
-
-    // Automations verify existence via getAgentAutomations; webhook returns not_offered without fake runId
-    const rerun = await handleClientCompatRpc('rerunAutomationFromCard', { id: 'a1', automationId: 'auto-1', entryId: 'e9' }, fakeHost);
-    assert.deepEqual(rerun, { ok: true, result: 'started', id: 'a1', automationId: 'auto-1' });
-    assert.deepEqual(calls.at(-1), { method: 'runAgentAutomationNow', args: { id: 'a1', automationId: 'auto-1' } });
-
-    const missingRerun = await handleClientCompatRpc('rerunAutomationFromCard', { id: 'a1', automationId: 'missing-auto' }, fakeHost);
-    assert.deepEqual(missingRerun, { ok: false, result: 'not_offered', id: 'a1', automationId: 'missing-auto' });
-
-    const webhook = await handleClientCompatRpc('runAutomationWebhook', { id: 'a1', automationId: 'auto-1', context: 'ctx' }, fakeHost);
-    assert.deepEqual(webhook, { ok: false, result: 'not_offered', id: 'a1', automationId: 'auto-1' });
-    assert.equal('runId' in webhook, false);
-
-    // Multi-page searchConversation using official nextBeforeSeq (no hasMore)
-    const found = await handleClientCompatRpc('searchConversation', { agentId: 'a1', query: 'prokbot', limit: 10 }, fakeHost);
-    assert.equal(found.isComplete, true);
-    assert.equal('nextBeforeSeq' in found, false);
-    assert.equal(found.matches.length, 3);
-    assert.equal(found.matches[0].entryId, 'e3');
-    assert.equal(found.matches[1].entryId, 'e2');
-    assert.equal(found.matches[2].entryId, 'e0');
-
-    // Limited search returns cursor for continuation
-    const limited = await handleClientCompatRpc('searchConversation', { agentId: 'a1', query: 'prokbot', limit: 1 }, fakeHost);
-    assert.equal(limited.matches.length, 1);
-    assert.equal(limited.matches[0].entryId, 'e3');
-    assert.equal(limited.isComplete, false);
-    assert.equal(limited.nextBeforeSeq, 103);
-
-    assert.ok(clientCompatMethods.has('searchConversation'));
-    assert.ok(clientCompatMethods.has('setMainAgent'));
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-});
-
-test('searchConversation traverses 1000 official-shape entries to find match at #11 and propagates Host errors', async () => {
-  const allEntries = Array.from({ length: 1000 }, (_, idx) => ({
-    id: `entry-${idx + 1}`,
-    seq: idx + 1,
-    role: idx % 2 === 0 ? 'user' : 'assistant',
-    timestampMs: 1_700_000_000_000 + idx * 1000,
-    text: idx === 10 ? 'needle-at-entry-11 found deep in history' : `ordinary message ${idx + 1}`,
-  }));
-
-  const fakeHost = async (method, args) => {
+/** Simulate official d0a4baa readTranscriptWindow: `seq` lives on the DB row, NOT on the parsed entry JSON. */
+function createOfficialTranscriptHost(rows) {
+  return async (method, args) => {
     assert.equal(method, 'getAgentTranscriptWindow');
-    const upper = typeof args.beforeSeq === 'number' ? args.beforeSeq : allEntries.length + 1;
-    const eligible = allEntries.filter(entry => entry.seq < upper);
+    const upper = typeof args.beforeSeq === 'number' ? args.beforeSeq : Number.POSITIVE_INFINITY;
+    const eligible = rows.filter(row => row.seq < upper);
     const slice = eligible.slice(-args.limit);
     const oldestSeq = slice[0]?.seq;
-    const hasEarlier = oldestSeq !== undefined && oldestSeq > 1;
+    const hasEarlier = oldestSeq !== undefined && rows.some(row => row.seq < oldestSeq);
     return {
-      entries: slice,
+      entries: slice.map(row => row.entry),
       ...(hasEarlier ? { nextBeforeSeq: oldestSeq } : {}),
       threadCounts: {},
     };
   };
+}
+
+test('client-compat-api only registers Host-forwarded RPCs and handles automations, skill targets, and errors', async () => {
+  assert.deepEqual(
+    [...clientCompatMethods].sort(),
+    [
+      'rerunAutomationFromCard',
+      'resolveSkillPublishTargets',
+      'runAutomationWebhook',
+      'searchConversation',
+    ],
+  );
+  for (const localMethod of [
+    'getServerAgentRoster',
+    'getMainAgent',
+    'setMainAgent',
+    'ensureDefaultMainAgent',
+    'dismissAgentSuggestions',
+    'confirmTeachLearningPrompt',
+    'takeTeachLearningPrompts',
+    'resolveAgentCreation',
+    'restoreTemporalAgentRouting',
+    'noteMountedAgent',
+    'noteTranscriptOpened',
+    'searchMessages',
+    'searchFiles',
+  ]) {
+    assert.equal(clientCompatMethods.has(localMethod), false);
+  }
+
+  const calls = [];
+  const fakeHost = async (method, args) => {
+    calls.push({ method, args });
+    if (method === 'getAgentTranscriptWindow') {
+      if (args.beforeSeq === 100) {
+        return {
+          entries: [
+            { id: 'e0', role: 'user', timestampMs: 500, text: 'Older ProkBot history hit' },
+          ],
+          threadCounts: {},
+        };
+      }
+      return {
+        nextBeforeSeq: 100,
+        entries: [
+          { id: 'e1', role: 'user', timestampMs: 1000, text: 'hello world' },
+          { id: 'e2', role: 'assistant', timestampMs: 2000, parts: [{ text: 'ProkBot status check complete' }] },
+          { id: 'e3', kind: 'send-message', timestampMs: 3000, message: { type: 'text', content: 'ProkBot nested reply ok' } },
+        ],
+        threadCounts: {},
+      };
+    }
+    if (method === 'getAgentAutomations') {
+      return [{ id: 'auto-1', name: 'Daily digest' }];
+    }
+    if (method === 'runAgentAutomationNow') return { ok: true };
+    throw new Error(`unexpected host call: ${method}`);
+  };
+
+  assert.deepEqual(await handleClientCompatRpc('resolveSkillPublishTargets', {}, fakeHost), { targets: [] });
+
+  // Invalid agentId rejected cleanly
+  await assert.rejects(
+    () => handleClientCompatRpc('searchConversation', { agentId: '../etc/passwd', query: 'x' }, fakeHost),
+    err => err instanceof HttpError && err.status === 400,
+  );
+  await assert.rejects(
+    () => handleClientCompatRpc('rerunAutomationFromCard', { id: 'a1', automationId: '' }, fakeHost),
+    err => err instanceof HttpError && err.status === 400,
+  );
+
+  // Automations verify existence via getAgentAutomations; webhook fails closed with HTTP 501
+  const rerun = await handleClientCompatRpc('rerunAutomationFromCard', { id: 'a1', automationId: 'auto-1', entryId: 'e9' }, fakeHost);
+  assert.deepEqual(rerun, { ok: true, result: 'started', id: 'a1', automationId: 'auto-1' });
+  assert.deepEqual(calls.at(-1), { method: 'runAgentAutomationNow', args: { id: 'a1', automationId: 'auto-1' } });
+
+  const missingRerun = await handleClientCompatRpc('rerunAutomationFromCard', { id: 'a1', automationId: 'missing-auto' }, fakeHost);
+  assert.deepEqual(missingRerun, { ok: false, result: 'not_offered', id: 'a1', automationId: 'missing-auto' });
+
+  await assert.rejects(
+    () => handleClientCompatRpc('runAutomationWebhook', { id: 'a1', automationId: 'auto-1', context: 'ctx' }, fakeHost),
+    err => err instanceof HttpError && err.status === 501,
+  );
+  await assert.rejects(
+    () => handleClientCompatRpc('runAutomationWebhook', { id: '../bad', automationId: 'auto-1' }, fakeHost),
+    err => err instanceof HttpError && err.status === 400,
+  );
+
+  // Multi-page searchConversation using official nextBeforeSeq (no entry.seq, no hasMore)
+  const found = await handleClientCompatRpc('searchConversation', { agentId: 'a1', query: 'prokbot', limit: 10 }, fakeHost);
+  assert.equal(found.isComplete, true);
+  assert.equal('nextBeforeSeq' in found, false);
+  assert.deepEqual(found.matches.map(m => m.entryId), ['e3', 'e2', 'e0']);
+
+  // Reaching limit mid-page still scans the whole page and returns page.nextBeforeSeq as cursor
+  const limited = await handleClientCompatRpc('searchConversation', { agentId: 'a1', query: 'prokbot', limit: 1 }, fakeHost);
+  assert.deepEqual(limited.matches.map(m => m.entryId), ['e3', 'e2']);
+  assert.equal(limited.isComplete, false);
+  assert.equal(limited.nextBeforeSeq, 100);
+
+  const page2 = await handleClientCompatRpc(
+    'searchConversation',
+    { agentId: 'a1', query: 'prokbot', limit: 1, beforeSeq: limited.nextBeforeSeq },
+    fakeHost,
+  );
+  assert.deepEqual(page2.matches.map(m => m.entryId), ['e0']);
+  assert.equal(page2.isComplete, true);
+  assert.equal('nextBeforeSeq' in page2, false);
+});
+
+test('searchConversation does not drop remaining matches when hitting limit mid-page (30 official entries, limit 2)', async () => {
+  // 30 entries all fit in one 200-row window; 10 of them match, and entries have NO `seq` field.
+  const rows = Array.from({ length: 30 }, (_, idx) => {
+    const seq = idx + 1;
+    const isHit = seq % 3 === 0;
+    return {
+      seq,
+      entry: {
+        id: `entry-${seq}`,
+        role: idx % 2 === 0 ? 'user' : 'assistant',
+        timestampMs: 1_700_000_000_000 + seq * 1000,
+        text: isHit ? `target-keyword hit #${seq}` : `filler message ${seq}`,
+      },
+    };
+  });
+
+  const result = await handleClientCompatRpc(
+    'searchConversation',
+    { agentId: 'a1b2', query: 'target-keyword', limit: 2 },
+    createOfficialTranscriptHost(rows),
+  );
+  assert.equal(result.isComplete, true);
+  assert.equal('nextBeforeSeq' in result, false);
+  assert.deepEqual(
+    result.matches.map(m => m.entryId),
+    ['entry-30', 'entry-27', 'entry-24', 'entry-21', 'entry-18', 'entry-15', 'entry-12', 'entry-9', 'entry-6', 'entry-3'],
+  );
+});
+
+test('searchConversation retrieves 100% of matches across multi-page pagination (450 official entries, limit 2)', async () => {
+  // 450 rows across 3 windows (251..450, 51..250, 1..50); 9 hits (every 50th row), no `seq` in entries.
+  const rows = Array.from({ length: 450 }, (_, idx) => {
+    const seq = idx + 1;
+    const isHit = seq % 50 === 0;
+    return {
+      seq,
+      entry: {
+        id: `entry-${seq}`,
+        role: idx % 2 === 0 ? 'user' : 'assistant',
+        timestampMs: 1_700_000_000_000 + seq * 1000,
+        text: isHit ? `needle-multi-page at ${seq}` : `ordinary line ${seq}`,
+      },
+    };
+  });
+
+  const host = createOfficialTranscriptHost(rows);
+  const collected = [];
+  let beforeSeq = undefined;
+  let pages = 0;
+
+  while (true) {
+    pages++;
+    assert.ok(pages <= 10, 'pagination loop should terminate cleanly');
+    const page = await handleClientCompatRpc(
+      'searchConversation',
+      { agentId: 'a1b2', query: 'needle-multi-page', limit: 2, ...(beforeSeq !== undefined ? { beforeSeq } : {}) },
+      host,
+    );
+    collected.push(...page.matches.map(m => m.entryId));
+    if (page.isComplete) {
+      assert.equal('nextBeforeSeq' in page, false);
+      break;
+    }
+    assert.equal(typeof page.nextBeforeSeq, 'number');
+    beforeSeq = page.nextBeforeSeq;
+  }
+
+  assert.equal(pages, 3);
+  assert.deepEqual(
+    collected,
+    ['entry-450', 'entry-400', 'entry-350', 'entry-300', 'entry-250', 'entry-200', 'entry-150', 'entry-100', 'entry-50'],
+  );
+});
+
+test('searchConversation traverses 1000 official-shape entries to find match at #11 and propagates Host errors', async () => {
+  const rows = Array.from({ length: 1000 }, (_, idx) => {
+    const seq = idx + 1;
+    return {
+      seq,
+      entry: {
+        id: `entry-${seq}`,
+        role: idx % 2 === 0 ? 'user' : 'assistant',
+        timestampMs: 1_700_000_000_000 + seq * 1000,
+        text: seq === 11 ? 'needle-at-entry-11 found deep in history' : `ordinary message ${seq}`,
+      },
+    };
+  });
 
   const result = await handleClientCompatRpc(
     'searchConversation',
     { agentId: 'a1b2', query: 'needle-at-entry-11', limit: 10 },
-    fakeHost,
+    createOfficialTranscriptHost(rows),
   );
   assert.equal(result.isComplete, true);
   assert.equal(result.matches.length, 1);

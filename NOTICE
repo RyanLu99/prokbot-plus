@@ -192,15 +192,19 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
     - Contributed by @jun9100 (GitHub pull request #11).
 
 16. Host client compatibility and reliability improvements.
-    - host/server/ adds client-compat-api.mjs (with MainAgentStore) for newer
-      Desktop 1.2.3 / iOS 1.26.0 / 1.27.0 RPCs, bounded drain-aware SSE replay
-      with live catch-up in notifications.mjs, and 120s default upstream headers
-      timeout in proxy.mjs.
-    - host/runtime/recovered-modules.mjs and recovered-blob-worker.mjs avoid
-      synchronous full-DB PRAGMA quick_check stalls when reopening large
-      conversation-blobs.db files, scheduling off-thread quick_check(1)
-      verification that marks corrupted databases for stock recovery on next
-      open.
+    - host/server/ adds client-compat-api.mjs for the Host-forwarded RPCs
+      missing in pinned d0a4baa (searchConversation, rerunAutomationFromCard,
+      runAutomationWebhook returning HTTP 501, resolveSkillPublishTargets),
+      bounded drain-aware SSE replay with live catch-up in notifications.mjs,
+      and 120s default upstream headers timeout in proxy.mjs.
+    - host/runtime/recovered-modules.mjs, recovered-blob-worker.mjs, and
+      host/release/compose*.yaml avoid main-thread PRAGMA quick_check stalls
+      when reopening large conversation-blobs.db files (>32 MiB by default,
+      configurable via GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES), running
+      node:sqlite PRAGMA quick_check(1) off the main event loop in a worker
+      thread (full scan for healthy databases, marking corrupted databases for
+      stock recovery on next open). Contributed by @jun9100 (GitHub pull
+      request #9).
 
 Third-party components
 ----------------------
