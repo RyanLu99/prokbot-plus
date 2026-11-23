@@ -94,8 +94,14 @@ void GBSyncAppIntentCredentials(void) {
   if (!connection.serverURL.length || !connection.deviceToken.length) {
     GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",
                                 @"grok-bot", sharedGroup);
+    GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",
+                                @"grok-bot", nil);
     GBDeleteAppIntentCredential(@"app:no-auth",
                                 @"sand.cursor-tokens", defaultGroup);
+    GBDeleteAppIntentCredential(@"app:no-auth",
+                                @"sand.cursor-tokens", sharedGroup);
+    GBDeleteAppIntentCredential(@"app:no-auth",
+                                @"sand.cursor-tokens", nil);
     return;
   }
   // Original Swift code derives the account ID from a JWT payload. This is an

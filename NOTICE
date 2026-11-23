@@ -181,9 +181,12 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
       hashes and patches both Widgets.appex grokbot scheme sites in 1.27.0;
       patch-app.py and signing.py isolate 1.27.0 Info.plist GrokAppProtection
       App Group and keychain access groups.
-    - ios/clients/ios/ updates keychain credential sync, RN session config,
-      local Auto-review preference RPC interception, native Pages/Canvas RPC
-      forwarding and diagnostics; ios/tools/build_ios_127_recipe.py,
+    - ios/clients/ios/ updates keychain credential sync (including full
+      multi-access-group cleanup, NSUserDefaults sync, and Caches/GrokBotPaired
+      removal on Settings Sign out), native Connect to Host entry on the 1.27.0
+      unpaired login screen, RN session config, local Auto-review preference
+      RPC interception, native Pages/Canvas RPC forwarding and diagnostics;
+      ios/tools/build_ios_127_recipe.py,
       ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/ provide the
       deterministic HBC 98 parser, auditor, 24-RPC BackendClient local bypass
       table, pinned cloud_canvas_skill/grok_bot_canvas_skill feature gates in

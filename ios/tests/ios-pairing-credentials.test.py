@@ -21,6 +21,28 @@ class PairingCredentialsTests(unittest.TestCase):
     def test_both_restore_and_connection_edit_keep_the_sync(self):
         self.assertGreaterEqual(SOURCE.count("GBSyncAppIntentCredentials();"), 4)
 
+    def test_disconnect_synchronizes_defaults_and_clears_paired_bundle_dir(self):
+        self.assertIn("standardUserDefaults synchronize", SOURCE)
+        self.assertIn('URLByAppendingPathComponent:@"GrokBotPaired"', SOURCE)
+
+    def test_bootstrap_intercepts_signout_and_login_screen_host_entry(self):
+        bootstrap = (
+            Path(__file__).resolve().parents[1] / "clients" / "ios" / "GBBootstrap.m"
+        ).read_text(encoding="utf-8")
+        app_intents = (
+            Path(__file__).resolve().parents[1] / "clients" / "ios" / "GBAppIntents.m"
+        ).read_text(encoding="utf-8")
+        self.assertIn("GBSignOutLabels", bootstrap)
+        self.assertIn("confirmSignOut", bootstrap)
+        self.assertIn("[GBConnection.shared disconnect]", bootstrap)
+        self.assertIn("GBPrimaryLoginLabels", bootstrap)
+        self.assertIn("GBSecondaryLoginLabels", bootstrap)
+        self.assertIn("installHostButtonOn:view styled:YES", bootstrap)
+        self.assertIn('NSClassFromString(@"RCTViewComponentView")', bootstrap)
+        self.assertIn('@"Sign in with Apple"', bootstrap)
+        self.assertIn('@"退出登录"', bootstrap)
+        self.assertIn('GBDeleteAppIntentCredential(@"app:no-auth",\n                                @"sand.cursor-tokens", nil);', app_intents)
+
 
 if __name__ == "__main__":
     unittest.main()
