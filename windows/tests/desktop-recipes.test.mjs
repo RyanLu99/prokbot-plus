@@ -37,11 +37,28 @@ test('the committed Windows recipes are the spec entries in path order', async (
 test('every extension source is carried verbatim by a recipe', async () => {
   const names = await readdir(extensions);
   assert.ok(names.length > 0);
+  const targets = [
+    { label: 'windows', list: committed },
+    ...await Promise.all([
+      ['mac-arm64', new URL('../../mac/patchers/desktop/', import.meta.url)],
+      ['mac-x64', new URL('../../mac/patchers/desktop/x64/', import.meta.url)],
+    ].map(async ([label, dir]) => {
+      const m = JSON.parse(await readFile(new URL('recipes/manifest.json', dir), 'utf8'));
+      const list = await Promise.all(m.files.map(async entry => ({
+        entry, recipe: JSON.parse(gunzipSync(await readFile(new URL(`recipes/${entry.recipe}`, dir)))),
+      })));
+      return { label, list };
+    })),
+  ];
   for (const name of names) {
     const source = await readFile(new URL(name, extensions));
-    const carriers = committed.filter(({ recipe }) => addedBytes(recipe).includes(source));
-    assert.equal(carriers.length, 1, `${name} is not in exactly one recipe; rerun windows/tools/desktop-recipes/build.mjs`);
+    for (const { label, list } of targets) {
+      const carriers = list.filter(({ recipe }) => addedBytes(recipe).includes(source));
+      assert.equal(carriers.length, 1, `${name} is not in exactly one ${label} recipe; rerun windows/tools/desktop-recipes/build.mjs --target ${label}`);
+    }
   }
+  const updateView = await readFile(new URL('update-view.js', extensions), 'utf8');
+  assert.match(updateView, /\(0,\s*x\.jsx\)\(h,\s*\{/, '1.2.3 update-view must render inside settings section h, not presentation hook g');
 });
 
 test('a replacement copies the original bytes it shares at either end', () => {

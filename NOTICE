@@ -21,8 +21,8 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
 1. Windows x64 client (new)
    - windows/: patcher, recipes, per-user installer source (Go), prebuilt
      grokbot-tailcat.exe and installer stub, tests. The patcher builds from
-     the official Windows 1.1.0 installer by default and from 0.71.2 as a
-     fallback; inputs.mjs recognizes an input by size and SHA-256.
+     the official Windows 1.2.3 installer by default and from 1.1.0 / 0.71.2
+     as fallbacks; inputs.mjs recognizes an input by size and SHA-256.
    - windows/tools/desktop-recipes/: generator, anchored edit list and the
      project code appended to original modules, producing the 1.1.0 recipes
      from the user's own installer. The 0.71.2 recipes are ported from the
@@ -178,6 +178,14 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
       voice-session.mjs, voice.mjs and admin UI (public/voice.js, speech.js,
       locales-en.js) add deterministic keyword/language candidate matching per
       Bot on the Host so all clients share per-Bot voices.
+14. Desktop 1.2.3 support (Windows x64, macOS ARM64 and macOS Intel x64).
+    - windows/patchers/desktop/ pins official 1.2.3 as default while preserving
+      1.1.0 and 0.71.2 fallbacks (shared with Android and web);
+      windows/tools/desktop-recipes/build.mjs adds --target windows|mac-arm64|mac-x64.
+    - mac/patchers/desktop/ and mac/patchers/desktop/x64/ pin official 1.2.3,
+      update native-helper.mjs for the universal CUGrokBotService binary, keep
+      dist/deps/ and onepassword-connection-service.cjs unpacked, and update
+      mac/clients/desktop/ for 1.2.3 RPC and local-service compatibility.
 
 Third-party components
 ----------------------
