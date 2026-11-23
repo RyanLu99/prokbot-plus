@@ -82,6 +82,15 @@ test('Android names its interface release and fallback; Mac notes a newer offici
   assert.ok(render(fixture,'en',data).includes('| 0.71.2 (not tested on a Mac) |'));
 });
 
+test('iOS marks a newer observed App Store release unsupported but keeps the pinned build', async () => {
+  const data = await fixtureData();
+  data.ios = { ...data.ios, version: '1.26.0', build: '29388' };
+  data.snap.ios = { ...data.snap.ios, version: '1.27.0' };
+  const zh = render(fixture, 'zh', data), en = render(fixture, 'en', data);
+  assert.ok(zh.includes('| iOS | [1.27.0](https://apps.apple.com/us/app/grok-bot/id6794501026)（此补丁不支持） | 1.26.0（构建 29388；已在 iPad 上验证连接、发消息和 App Intent） |'));
+  assert.ok(en.includes('| iOS | [1.27.0](https://apps.apple.com/us/app/grok-bot/id6794501026) (not supported by this patch) | 1.26.0 (build 29388; pairing, messaging and App Intents verified on an iPad) |'));
+});
+
 test('vendor observation does not promote supported client, shell, or cloud inputs', async () => {
   const data = await fixtureData();
   const newer = structuredClone(data); newer.snap.windows.version = '99.2.1'; newer.android.shell.versionName = '2.7.0';

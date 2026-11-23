@@ -214,7 +214,10 @@ Bot 做有风险的操作前，原版会问官方分类服务。这里改用你�
 
 ### iOS 客户端
 
-原版 iOS 客户端用 React Native 开发。这里写了一个注入的动态库（Objective-C，源码在 `ios/clients/ios/`，`build.py` 编译），把发往官方的请求转到你的 Host，再对 Hermes 字节码做少量固定修改。小组件、分享和通知三个扩展保留，使用独立的 Bundle ID。补丁输出未签名的 IPA，主应用和三个扩展都要自己签名（见 [`ios/README.md`](../ios/README.md)）。字节码补丁（`ios/recipes/ios/*.hbc.gbp.gz`）是上游作者生成的数据，修改字节码的过程没有附在上游仓库里。
+原版 iOS 客户端用 React Native 开发。这里写了一个注入的动态库（Objective-C，源码在 `ios/clients/ios/`，`build.py` 编译），把发往官方的请求转到你的 Host，再对 Hermes 字节码做少量固定修改。小组件、分享和通知三个扩展保留，使用独立的 Bundle ID；`extensions.py` 与 `patch-app.py` 同时隔离主应用与扩展 `Info.plist` 中的 `GrokAppProtection` 组配置。补丁输出未签名的 IPA，主应用和三个扩展都要自己签名（见 [`ios/README.md`](../ios/README.md)）。
+
+- **字节码补丁工具（HBC 98）**：1.27.0（29519）的三份补丁由 `ios/tools/build_ios_127_recipe.py` 与 `ios/tools/hbc98/` 仅凭用户原版 1.27.0 HBC 与仓库内归档 1.26.0 补丁即可确定性重建（按 1.27.0 字符串表语义移植全部 59 处编辑与 6 个新增函数，包含 `stampSender` 父环境槽位 `60`、`gatewayPorts` `CreateClosureLongIndex`、动态 `Promise.resolve(true)` 遥测桩、SkillDetail 环境槽位 `12`/`18` 与 React 模块 `__r(50)`、保持 `ChatAvatar` 默认 `live`、隐藏 `useNativePluginEntries`、扩展 `BackendClient.call`/`callPublic` 至 24 项本地旁路、以及在 `buildPinnedGate` (`fn#19464`) 固定 `cloud_canvas_skill` 与 `grok_bot_canvas_skill` 为 `true`），回放三份 recipe 并模拟 URL/token 注入后重新审计。`ios/tools/build_ios_126_recipe.py` 需要未提交的本地中间分析文件（`bodies_full.json`、`bodies_plan.json` 等，因含原版字节码片段不进仓库）才能重跑，仅供留档参考。`ios/recipes/ios/1.26.0/` 与 `ios/recipes/ios/1.16.0/` 保留 1.26.0（29388）和 1.16.0（23152）的固定回退补丁；仓库只保存确定性补丁，不保存原版或修改后的 HBC。
+- **Host 兼容与注入库**：`ios/clients/ios/GBConnectors.m` 通过 swizzle `NSURLSession` 工厂方法在保留应用自定义 `NSURLSessionConfiguration` 的同时前置本地 `NSURLProtocol`（后台会话配置原样放行），拦截自动审查团队偏好 RPC 返回 `{}`，并将连接应用、8 个 Canvas/Pages RPC 与 2 个 MCP 工具权限 RPC 转发至 Host `/local/mobile-rpc/`；Host 端由独立模块 `host/server/mobile-rpc-compat.mjs` 对未启用自建 Pages 的实例返回 `ListUserCanvases` 空列表、Connect 格式 `not_found`/`unimplemented` 错误，并对 `GetGrokBotMcpToolPermissions` 返回 `{ servers: [] }`、`SetGrokBotMcpToolPermissions` 返回 501 `unimplemented`。`GBBootstrap.m` 依据设置页特有标记（`dev-gateway@localhost`、本地配置覆盖 tag 等）在设置页接管「退出登录 / Sign out」清理全部钥匙串访问组、`NSUserDefaults` 与 `Caches/GrokBotPaired`，并在未配对登录页提供原生「连接 Host」入口。
 
 <a id="voice"></a>
 ### 语音、推送和外网访问
@@ -288,7 +291,10 @@ node --test "web/tests/*.test.mjs"       # 网页版
 - 在 Git Bash 里运行 Host 测试时，PATH 里的 `/usr/bin/tar` 会让两项部署用例失败，要把 `C:\Windows\System32` 放在前面，使用 Windows 自带的 `tar.exe`。
 - 依赖官方原包的用例默认跳过。把原包放在 Git 忽略的 `inputs/` 并设置环境变量后才会运行：`PROKBOT_ANDROID_TEST_SOURCE`、`PROKBOT_WEB_TEST_SOURCE`（1.1.0 安装包）、`PROKBOT_WEB_TEST_FALLBACK_SOURCE`（0.71.2 安装包）、`PROKBOT_TEST_HOST_ARCHIVE`（Host 原包，未设置时找 `inputs/host/sand-host-bundle-d0a4baa.tgz`）。
 - 网页版浏览器测试：`python web/tests/browser-flows.py <界面包>`，需要 Playwright（`pip install playwright`、`playwright install chromium firefox webkit`），在 8 种设备尺寸上跑登录、对话、看图、通知、返回和退出。改了 `android/client/` 或 `web/` 要用 1.1.0 和 0.71.2 两种界面包各跑一次。
-- iOS 网络层：`python3 ios/tests/ios-network.test.py`，只能在装了 Xcode 命令行工具的 Mac 上运行。
+- iOS 测试：
+  - `python3 -B -m unittest discover -s ios/tools/hbc98/tests`（在仓库根目录运行，HBC 98 解析与补丁生成单测）；
+  - `python3 ios/tests/ios-release.test.py`、`ios-signing.test.py`、`ios-pairing-credentials.test.py`、`ios-app-intents-source.test.py`、`ios-pages-rpc.test.py`（跨平台离线运行）；
+  - `python3 ios/tests/ios-network.test.py` 与 `python3 ios/tests/ios-auto-review-preferences.test.py`（需要装了 Xcode 命令行工具的 Mac）。
 - Android 外壳配对来源检查：`python android/tests/native_pairing_origin.py`，需要先构建外壳。
 
 自动测试之外，改动后建议用 `host-admin.mjs model-set --test-only` 对各格式发真实请求，在客户端完成一次带工具调用的多轮对话，并让 Bot 搜一条新闻、画一张 16:9 的图再改一处。改了 Host 运行时代码要重建镜像才生效，只在隔离的非生产实例上验证。
@@ -296,7 +302,7 @@ node --test "web/tests/*.test.mjs"       # 网页版
 <a id="desktop-compatibility"></a><a id="desktop-validation"></a>
 ### 支持新的官方版本
 
-版本由构建工具读取的清单决定：桌面 `*/patchers/desktop/supported.json` 和 `recipes/manifest.json`，Android 和网页版 `android/patchers/supported.json`，iOS `ios/recipes/ios/manifest.json`，Host `host/recipes/host/manifest.json`。不要放宽哈希校验。
+版本由构建工具读取的清单决定：桌面 `*/patchers/desktop/supported.json` 和 `recipes/manifest.json`，Android 和网页版 `android/patchers/supported.json`，iOS `ios/recipes/ios/manifest.json`（及回退目录 `ios/recipes/ios/<版本>/manifest.json`、`ios/patchers/ios/extensions.py` 中的 `EXTENSIONS_BY_RELEASE` 与 `WIDGETS_SCHEME_COUNTS_BY_RELEASE`），Host `host/recipes/host/manifest.json`。不要放宽哈希校验。
 
 ```sh
 node ci/official-channels.mjs --online --phase planning     # 查询官方通道的当前版本
@@ -332,4 +338,5 @@ node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> 
 - Android：不支持 Tailcat；排版照官方手机版，但页面内容是桌面版的（设置是「通用 / 电脑 / 更新」等标签页，Bot 的电脑从对话详情打开）；后台通知靠前台服务，部分厂商系统需要允许后台运行；语音只验证到请求送达 Host；只在模拟器上测过。
 - 网页版：只能使用 Host 上的 Bot 电脑；不支持 Tailcat；http 地址下麦克风、语音输入和通知不可用，页面关闭后没有通知；没有在真机浏览器上测试。
 - 原版桌面只有 amd64。单台 ARM 机器同时运行 Host 和模拟桌面的完整部署和性能没有验证。
-- Mac：Intel 1.2.3 已在 Intel Mac 上实测生成、配对和对话可用（本机图形控制和 Tailcat 尚未在 Intel Mac 上实测）；Apple 芯片 1.2.3 已通过证书签名构建校验，但尚未在 Apple 芯片真机上实测运行。iOS 是上游已有的补丁，本项目尚未真机测试，需要自备已解密的 IPA 和签名证书。
+- Mac：Intel 1.2.3 已在 Intel Mac 上实测生成、配对和对话可用（本机图形控制和 Tailcat 尚未在 Intel Mac 上实测）；Apple 芯片 1.2.3 已通过证书签名构建校验，但尚未在 Apple 芯片真机上实测运行。
+- iOS 需要自备已解密的 IPA 和签名证书。1.27.0（29519）已在 iPad Pro M1 真机验证覆盖升级、配对、消息与图片附件、设置页自动审查解锁与持续通知流（尚未在 iPhone 完成全流程验收）；归档 1.26.0 补丁（`0f82cc…`）在早期已实测的 `6a4531…` 基础上新增隐藏内置原生插件入口；1.16.0（23152）搭配新版 `GrokBotLocal.dylib` 尚未真机实测。

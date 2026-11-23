@@ -206,11 +206,39 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
       stock recovery on next open). Contributed by @jun9100 (GitHub pull
       request #9).
 
+17. iOS 1.27.0 (29519) support with pinned 1.26.0 (29388) and 1.16.0 (23152)
+    fallbacks.
+    - ios/recipes/ios/ pins official iOS 1.27.0 (build 29519) while keeping
+      ios/recipes/ios/1.26.0/ and ios/recipes/ios/1.16.0/ as strictly pinned
+      fallbacks (enforcing unique release pins); ios/patchers/ios/extensions.py
+      verifies per-release extension hashes, patches both Widgets.appex grokbot
+      scheme sites in 1.27.0, and isolates extension GrokAppProtection groups;
+      patch-app.py and signing.py isolate main/extension GrokAppProtection
+      (writing only granted App Groups), warn when a profile omits a requested
+      App Group, and write TeamIdentifier to Expo app.config.
+    - ios/clients/ios/ updates keychain credential sync (including full
+      multi-access-group cleanup, NSUserDefaults sync, and Caches/GrokBotPaired
+      removal on Settings-scoped Sign out), native Connect to Host entry on the
+      unpaired login screen, non-destructive NSURLSession factory swizzling
+      (leaving background session configurations untouched), local Auto-review
+      preference RPC interception, native Pages/Canvas RPC forwarding and
+      diagnostics; host/server/mobile-rpc-compat.mjs adds standalone Host
+      compatibility responses for the 8 Canvas/Pages RPCs and both MCP
+      tool-permission RPCs; ios/tools/build_ios_127_recipe.py,
+      ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/ provide the
+      deterministic HBC 98 parser, auditor, 24-RPC BackendClient local bypass
+      table, pinned Canvas feature gates, and recipe generators. Only
+      deterministic byte patches are stored in the repository.
+
 Third-party components
 ----------------------
 
 Third-party components keep their own licenses. See host/THIRD_PARTY,
 mac/THIRD_PARTY, ios/THIRD_PARTY and mac/patchers/desktop/node_modules.
+ios/tools/hbc98/opcodes-v98.json derives its Hermes bytecode v98 opcode table
+from Meta's facebook/hermes (include/hermes/BCGen/HBC/BytecodeList.def, MIT
+License) using the JSON layout popularized by hbctool (MIT License); both
+license texts are included in ios/THIRD_PARTY/.
 android/shell/gradle/wrapper/ contains the Gradle Wrapper, and the prebuilt
 Android shell includes parts of the Kotlin standard library; both are
 licensed under the Apache License 2.0.
