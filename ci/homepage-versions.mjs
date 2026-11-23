@@ -50,6 +50,11 @@ function windowsNote(observed, accepted, zh) {
   return zh ? '此补丁不支持' : 'not supported by this patch';
 }
 
+function iosNote(observed, pinned, zh) {
+  if (observed.version === pinned.version) return '';
+  return zh ? '此补丁不支持' : 'not supported by this patch';
+}
+
 export function render(text, lang, data) {
   assert.ok(['zh','en'].includes(lang));
   const { snap, win, winFallback, mac, macIntel, ios, android, androidFallback, host, box } = data;
@@ -60,6 +65,7 @@ export function render(text, lang, data) {
   }
   const windowsBadge = (name, value, color) => badge(name,value,`${name} ${value}`,'windows',color);
   const note = windowsNote(snap.windows, [win, ...winFallback], zh);
+  const iosUnsupported = iosNote(snap.ios, ios, zh);
   const older = winFallback.map(item => item.version);
   const accepted = older.length ? `${win.version} x64${zh ? `（推荐）、${list(older)}` : ` (recommended), ${list(older)}`}` : `${win.version} x64`;
   const windowsNeeds = older.length ? (zh ? `**${win.version}**（推荐）；用不了再用 ${list(older)}` :
@@ -81,7 +87,7 @@ export function render(text, lang, data) {
     `| Windows x64 | [${snap.windows.version}](${official.win})${note ? (zh ? `（${note}）` : ` (${note})`) : ''} | ${windowsNeeds} |`,
     `| macOS ARM64 | [${snap.mac.version}](${official.mac}) | ${mac.version}${zh ? `（${macNote}未在 Mac 真机上测试）` : ` (${macNote}not tested on a Mac)`} |`,
     `| macOS Intel (x64) | [${snap.mac.version}](${official.macIntel}) | ${macIntel.version}${zh ? `（实验：${macNote}已有用户在 Intel Mac 上实测可用）` : ` (experimental: ${macNote}confirmed working by a user on an Intel Mac)`} |`,
-    `| iOS | [${snap.ios.version}](${official.ios}) | ${ios.version}${zh ? `（构建 ${ios.build}；未在 iPhone / iPad 上测试）` : ` (build ${ios.build}; not tested on an iPhone or iPad)`} |`,
+    `| iOS | [${snap.ios.version}](${official.ios})${iosUnsupported ? (zh ? `（${iosUnsupported}）` : ` (${iosUnsupported})`) : ''} | ${ios.version}${zh ? `（构建 ${ios.build}；已在 iPad 上验证连接、发消息和 App Intent）` : ` (build ${ios.build}; pairing, messaging and App Intents verified on an iPad)`} |`,
     zh ? `| Android 9+（自开发，非官方） | 不用官方 Android 版 | App **${android.shell.versionName}**（构建 ${android.shell.versionCode}），界面取自 Windows **${android.desktopVersion}** 安装包${androidNeeds} |` :
       `| Android 9+ (unofficial) | Does not use the official Android app | App **${android.shell.versionName}** (build ${android.shell.versionCode}), interface taken from the Windows **${android.desktopVersion}** installer${androidNeeds} |`,
     zh ? `| 网页版（浏览器，非官方） | 不用安装 | 界面取自 Windows **${android.desktopVersion}** 安装包${androidNeeds}，生成后上传到你的 Host |` :

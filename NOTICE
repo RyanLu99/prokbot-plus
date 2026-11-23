@@ -15,7 +15,7 @@ modifications below. The noncommercial conditions also apply to everything
 ProkBot Plus adds; none of it is offered under terms that allow commercial use.
 CHANGELOG.md lists the changes by release.
 
-Modifications made in ProkBot Plus (2026-11-07 to 2026-11-20)
+Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
 --------------------------------------------------------------
 
 1. Windows x64 client (new)
@@ -172,6 +172,15 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-20)
     before writing or starting a subpath-mount configuration; distribution
     version suffixes are accepted and --host-only is not gated. Contributed by
     @jun9100 (GitHub pull request #5). Clients are unchanged.
+
+14. iOS 1.26.0 (29388) support with pinned 1.16.0 (23152) fallback.
+    - ios/recipes/ios/ pins official iOS 1.26.0 (build 29388) while keeping
+      ios/recipes/ios/1.16.0/ as a strictly pinned fallback; ios/patchers/ios/
+      extensions.py verifies per-release extension hashes without loosening pins.
+    - ios/clients/ios/ updates keychain credential sync, RN session config and
+      diagnostics; ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/
+      provide the deterministic HBC 98 parser, auditor and recipe generator.
+      Only deterministic byte patches are stored in the repository.
 
 Third-party components
 ----------------------

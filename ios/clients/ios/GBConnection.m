@@ -424,6 +424,7 @@ static UIViewController *GBTop(void) {
                   GBConnection.shared.deviceToken = token;
                   GBRestoreProfileCache();
                   GBConnection.shared.gatewayBundleURL = bundle;
+                  GBSyncAppIntentCredentials();
                   strong.key.text = @"";
                   [strong dismissViewControllerAnimated:YES
                                              completion:^{

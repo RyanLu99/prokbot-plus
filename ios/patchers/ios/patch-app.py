@@ -97,6 +97,17 @@ def remove_signature(path):
     struct.pack_into('<I',data,16,len(kept));struct.pack_into('<I',data,20,len(body))
     path.write_bytes(data)
 
+def pinned_releases():
+    primary=json.loads((ROOT/'recipes/ios/manifest.json').read_text(encoding='utf-8'))
+    releases=[(primary['version'],primary['build'])]
+    recipes_root=ROOT/'recipes/ios'
+    for child in sorted(recipes_root.iterdir(),reverse=True):
+        manifest=child/'manifest.json'
+        if child.is_dir() and manifest.is_file():
+            pin=json.loads(manifest.read_text(encoding='utf-8'))
+            releases.append((pin['version'],pin['build']))
+    return releases
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
@@ -119,15 +130,18 @@ def main():
     extension_profiles=json.loads(a.extension_profiles.read_text()) if a.extension_profiles else {}
     if not isinstance(extension_profiles,dict):raise ValueError('Expected extension profile mapping')
     original=plistlib.loads((a.source/'Info.plist').read_bytes());executable=original['CFBundleExecutable']
-    pin=json.loads((ROOT/'recipes/ios/manifest.json').read_text(encoding='utf-8'));version,build=pin['version'],pin['build']
-    if original.get('CFBundleIdentifier')!='co.anysphere.sand' or original.get('CFBundleShortVersionString')!=version or original.get('CFBundleVersion')!=build:raise ValueError(f'Unsupported original app; expected {version} ({build})')
+    releases=pinned_releases()
+    release=(original.get('CFBundleShortVersionString'),original.get('CFBundleVersion'))
+    if original.get('CFBundleIdentifier')!='co.anysphere.sand' or release not in releases:
+        supported=', '.join(f'{v} ({b})' for v,b in releases)
+        raise ValueError(f'Unsupported original app; expected {supported}')
     if a.bundle_id==original['CFBundleIdentifier']:raise ValueError('Use an independent bundle ID to preserve the installed original')
     before=sha(a.source/executable);a.output.mkdir(parents=True,mode=0o700)
     app=a.output/'Payload'/a.source.name;shutil.copytree(a.source,app,symlinks=True)
     removed=[]
     if (app/'PlugIns').exists() and a.remove_extensions:
         removed=[x.name for x in (app/'PlugIns').iterdir()];shutil.rmtree(app/'PlugIns')
-    extensions=[] if a.remove_extensions else prepare_extensions(app,a.bundle_id,group,commands)
+    extensions=[] if a.remove_extensions else prepare_extensions(app,a.bundle_id,group,commands,release=release)
     for pth in app.rglob('*'):
         if not pth.is_file():continue
         data=pth.read_bytes()

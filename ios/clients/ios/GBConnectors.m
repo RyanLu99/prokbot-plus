@@ -6,7 +6,73 @@
 #import "GBVoice.h"
 #import "GBAppIntents.h"
 #import "GBSharing.h"
+#import "GBDiagnostics.h"
+#import <dlfcn.h>
+#import <mach-o/dyld.h>
 #import <objc/runtime.h>
+#import <string.h>
+
+// RN can install a process-wide configuration provider which bypasses the
+// default/ephemeral class methods swizzled below. Re-install a provider that
+// starts from the swizzled default configuration so local URLProtocols remain
+// active for the 1.26 networking stack.
+typedef NSURLSessionConfiguration *(^GBSessionConfigurationProvider)(void);
+typedef void (*GBSetSessionConfigurationProvider)(GBSessionConfigurationProvider);
+static GBSetSessionConfigurationProvider GBSetCustomSessionProvider;
+
+static NSURLSessionConfiguration *GBProvidedSessionConfiguration(void) {
+  return [NSURLSessionConfiguration defaultSessionConfiguration];
+}
+
+static void GBInstallSessionConfigurationProvider(void) {
+  if (!GBSetCustomSessionProvider) {
+    GBSetCustomSessionProvider =
+        (GBSetSessionConfigurationProvider)dlsym(
+            RTLD_DEFAULT, "RCTSetCustomNSURLSessionConfigurationProvider");
+  }
+  // Framework symbols are not guaranteed to be in RTLD_DEFAULT on iOS.
+  // Resolve the already-loaded React image explicitly before giving up.
+  if (!GBSetCustomSessionProvider) {
+    const char *classImage = class_getImageName(NSClassFromString(@"RCTHTTPRequestHandler"));
+    if (classImage) {
+      void *image = dlopen(classImage, RTLD_LAZY | RTLD_NOLOAD);
+      if (!image) image = dlopen(classImage, RTLD_LAZY);
+      if (image) {
+        GBSetCustomSessionProvider =
+            (GBSetSessionConfigurationProvider)dlsym(
+                image, "RCTSetCustomNSURLSessionConfigurationProvider");
+      }
+      GBDiagnosticsEvent(@"rn.provider.resolve", @{
+        @"classImage": [NSString stringWithUTF8String:classImage],
+        @"symbolFound": @(GBSetCustomSessionProvider != NULL),
+      });
+    }
+  }
+  if (!GBSetCustomSessionProvider) {
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+      const char *path = _dyld_get_image_name(i);
+      if (!path || !strstr(path, "/React.framework/React")) continue;
+      void *image = dlopen(path, RTLD_LAZY | RTLD_NOLOAD);
+      if (image) {
+        GBSetCustomSessionProvider =
+            (GBSetSessionConfigurationProvider)dlsym(
+                image, "RCTSetCustomNSURLSessionConfigurationProvider");
+        dlclose(image);
+      }
+      if (GBSetCustomSessionProvider) break;
+    }
+  }
+  if (!GBSetCustomSessionProvider) {
+    GBDiagnosticsEvent(@"rn.provider.unavailable", @{
+      @"loadedImages": @(_dyld_image_count()),
+    });
+    return;
+  }
+  GBSetCustomSessionProvider(^{
+    return GBProvidedSessionConfiguration();
+  });
+  GBDiagnosticsEvent(@"rn.provider.installed", @{});
+}
 
 static NSSet *GBConnectorMethods(void) {
   static NSSet *methods; static dispatch_once_t once;
@@ -83,4 +149,5 @@ void GBInstallConnectorTransport(void) {
     GBDefaultConfig=method_setImplementation(a,(IMP)GBDefault);
     GBEphemeralConfig=method_setImplementation(b,(IMP)GBEphemeral);
   });
+  GBInstallSessionConfigurationProvider();
 }

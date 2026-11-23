@@ -38,10 +38,13 @@ static id GBFindHost(void) {
 }
 static void GBLoad(id self, SEL cmd, NSURL *url, id progress, id completion) {
   GBHost = self;
-  NSURL *patched = GBConnection.shared.gatewayBundleURL;
-  GBLoadedPairedBundle = patched != nil;
-  GBDiagnosticsRecordBundle(url, patched ?: url);
-  ((void (*)(id, SEL, NSURL *, id, id))GBOriginalLoad)(self, cmd, patched ?: url, progress,
+  BOOL useEmbeddedBundle = [NSProcessInfo.processInfo.environment[@"GROKBOT_VALIDATE_EMBEDDED_BUNDLE"] boolValue];
+  NSURL *paired = GBConnection.shared.gatewayBundleURL;
+  NSURL *loaded = useEmbeddedBundle ? url : (paired ?: url);
+  GBLoadedPairedBundle = paired != nil && !useEmbeddedBundle;
+  GBDiagnosticsRecordBundle(url, loaded);
+  GBDiagnosticsEvent(@"bundle.mode", @{@"embedded":@(useEmbeddedBundle), @"paired":@(paired != nil)});
+  ((void (*)(id, SEL, NSURL *, id, id))GBOriginalLoad)(self, cmd, loaded, progress,
                                                        completion);
 }
 void GBReloadReactHost(void) {
@@ -112,6 +115,13 @@ void GBReloadReactHost(void) {
       view.userInteractionEnabled = YES;
       [view addSubview:button];
     }
+    return;
+  }
+  if (!GBConnection.shared.deviceToken.length &&
+      [@[@"调试", @"Debug"] containsObject:label] && view.bounds.size.width > 300 &&
+      view.bounds.size.height >= 44) {
+    // 1.26 uses the full-width unpaired Debug entry for local Host setup.
+    view.accessibilityIdentifier = @"grokbot.host.settings";
     return;
   }
   if (([@[@"调试", @"Debug", @"link", @"连接 Host", @"Host Connection"] containsObject:label]) && GBConnection.shared.deviceToken.length && view.bounds.size.width <= 88) {

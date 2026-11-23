@@ -1,7 +1,7 @@
 // Offline maintenance check: report what the build tools actually pin.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 import { inspectRecipe } from './recipe-pin.mjs';
@@ -99,5 +99,15 @@ assert.equal(await sha(android.shell.path), android.shell.sha256, 'Android shell
 const shell = verifyShellVersion(readZip(await bytes(android.shell.path)).entries, android.shell);
 const ios = await json('ios/recipes/ios/manifest.json');
 await checkRecipes('ios/recipes/ios', ios.resources, 'patch', ios.hbcSha256);
-assert.equal(await sha('ios/bin/GrokBotLocal.dylib'), ios.dylibSha256, 'iOS injected library digest mismatch');
-console.log(JSON.stringify({ ...versions, androidShell: `${shell.versionName} (${shell.versionCode})`, androidRenderer: [android.desktopVersion, ...(android.fallback ?? []).map(item => item.desktopVersion)].join(', '), ios: `${ios.version} (${ios.build})` }, null, 2));
+const iosDylibSha = await sha('ios/bin/GrokBotLocal.dylib');
+assert.equal(iosDylibSha, ios.dylibSha256, 'iOS injected library digest mismatch');
+const iosFallback = [];
+for (const entry of (await readdir(join(root, 'ios/recipes/ios'), { withFileTypes: true })).sort((a, b) => b.name.localeCompare(a.name))) {
+  if (!entry.isDirectory()) continue;
+  const dir = `ios/recipes/ios/${entry.name}`;
+  const fallback = await json(`${dir}/manifest.json`);
+  await checkRecipes(dir, fallback.resources, 'patch', fallback.hbcSha256);
+  assert.equal(iosDylibSha, fallback.dylibSha256, `${dir}: iOS injected library digest mismatch`);
+  iosFallback.push(`${fallback.version} (${fallback.build})`);
+}
+console.log(JSON.stringify({ ...versions, androidShell: `${shell.versionName} (${shell.versionCode})`, androidRenderer: [android.desktopVersion, ...(android.fallback ?? []).map(item => item.desktopVersion)].join(', '), ios: `${ios.version} (${ios.build})`, ...(iosFallback.length ? { iosFallback } : {}) }, null, 2));

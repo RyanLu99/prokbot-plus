@@ -51,6 +51,24 @@ class ReleaseOutput(unittest.TestCase):
         self.refused('Expected thin arm64 executable')
         self.assertEqual(list(self.root.iterdir()), [self.source])
 
+    def test_accepts_pinned_fallback_release_and_enforces_per_release_extensions(self):
+        fallback_manifest = MANIFEST.parent / '1.16.0' / 'manifest.json'
+        self.assertTrue(fallback_manifest.is_file(), '1.16.0 fallback manifest must remain pinned')
+        fallback = json.loads(fallback_manifest.read_text(encoding='utf-8'))
+        self.assertEqual((fallback['version'], fallback['build']), ('1.16.0', '23152'))
+        self.app_metadata(fallback['version'], fallback['build'])
+        self.refused('Expected thin arm64 executable')
+        self.app_metadata(fallback['version'], fallback['build'] + '9')
+        self.refused('Unsupported app version')
+        sys.path.insert(0, str(PATCHER.parents[1] / 'patchers' / 'ios'))
+        import extensions  # noqa: E402
+        self.assertIn(('1.26.0', '29388'), extensions.EXTENSIONS_BY_RELEASE)
+        self.assertIn(('1.16.0', '23152'), extensions.EXTENSIONS_BY_RELEASE)
+        self.assertNotEqual(
+            extensions.EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]['Widgets.appex'][1],
+            extensions.EXTENSIONS_BY_RELEASE[('1.16.0', '23152')]['Widgets.appex'][1],
+        )
+
     def test_metadata_gate_and_help_follow_the_packaged_manifest(self):
         # Copy only the release scripts and manifest into an isolated package. No working
         # IPA, patch recipes or native library are supplied: the binary gate must still fail.
@@ -70,6 +88,13 @@ class ReleaseOutput(unittest.TestCase):
                                             env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
         self.assertIn('0.0.7 (9001)', help_text)
         self.assertEqual(set(self.root.iterdir()), {package, self.source})
+
+    def test_private_patch_helper_uses_the_packaged_manifest(self):
+        helper = PATCHER.parents[1] / 'patchers' / 'ios' / 'patch-app.py'
+        source = helper.read_text(encoding='utf-8')
+        self.assertIn("ROOT/'recipes/ios/manifest.json'", source)
+        self.assertNotIn("--expect-version", source)
+        self.assertNotIn("--expect-build", source)
 
     def test_invalid_archive_leaves_no_output(self):
         self.source.write_bytes(b'demo, not an archive')
