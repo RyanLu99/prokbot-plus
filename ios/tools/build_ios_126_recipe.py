@@ -57,12 +57,14 @@ EXPECTED_GATEWAY_SHA256 = (
     '1fe92c5c37f401eaef0ea4c4eb574471c828e1f99b96826919f74f550d178bf2'
 )
 EXPECTED_GATEWAY_SHA256_WITH_AVATAR_MOTION = (
-    '6a45311352e92112f61ce3e46c1fd6683c836d064e3b74d6b33314769b3f2be8'
+    '0f82ccd7b58503d7ecde6752237c596a94580141e0be2227a209d5aea5517dc7'
 )
 CHAT_AVATAR_FUNCTION = 40727
 CHAT_AVATAR_DEFAULT_STATIC_INDEX = 16147
 CHAT_AVATAR_LIVE_INDEX = 17658
 CHAT_AVATAR_LOAD_OFFSET = 52
+NATIVE_PLUGIN_ENTRIES_FUNCTION = 52198
+EMPTY_ARRAY_STUB = bytes.fromhex('080000007600')  # NewArray r0, 0; Ret r0
 RET_THIS_STUB = bytes.fromhex('8900007600')  # LoadParam r0, 0; Ret r0
 STUB_NAMES = {
     bytes.fromhex('96007600'): 'false',
@@ -293,6 +295,29 @@ def assert_chat_avatar_motion(file: HBCFile, label: str) -> None:
         for instruction in instructions
     ):
         raise AssertionError(f'{label} still references static in ChatAvatar')
+
+
+def assert_native_plugin_entries_hidden(file: HBCFile, label: str) -> None:
+    """Verify useNativePluginEntries returns [] to hide official native entries."""
+
+    header = effective_header(file, NATIVE_PLUGIN_ENTRIES_FUNCTION)
+    strings = hbc_strings(file)
+    if strings[header.function_name].text != 'useNativePluginEntries':
+        raise AssertionError(
+            f'{label} changed the useNativePluginEntries function identity'
+        )
+    body = file.data[header.offset:header.offset + header.bytecode_size]
+    instructions = file.opcodes.decode(body, 0, len(body))
+    if (
+        len(instructions) < 2
+        or instructions[0].name != 'NewArray'
+        or instructions[0].operands != (0, 0)
+        or instructions[1].name != 'Ret'
+        or instructions[1].operands != (0,)
+    ):
+        raise AssertionError(
+            f'{label} does not return [] from useNativePluginEntries'
+        )
 
 
 def require_clean(file: HBCFile, label: str) -> None:
@@ -1347,6 +1372,24 @@ def apply_clean_126_fixes(
         opcodes.decode(bytes(b), 0, len(b))
         replacements[new_i] = replace(ed, body=bytes(b))
 
+    # 18. fn#52198 (useNativePluginEntries): return [] so built-in official native
+    #     plugin entries (such as official 1Password) do not appear in Connected Apps.
+    h52198 = effective_header(stock, NATIVE_PLUGIN_ENTRIES_FUNCTION)
+    if strs[h52198.function_name].text != 'useNativePluginEntries':
+        raise ValueError(
+            f'Function {NATIVE_PLUGIN_ENTRIES_FUNCTION} is '
+            f'{strs[h52198.function_name].text!r}, expected useNativePluginEntries'
+        )
+    body_52198, boundary_52198 = equal_length_cover_body(
+        stock, NATIVE_PLUGIN_ENTRIES_FUNCTION, EMPTY_ARRAY_STUB
+    )
+    if boundary_52198 != 7:
+        raise ValueError(
+            f'useNativePluginEntries fn#{NATIVE_PLUGIN_ENTRIES_FUNCTION} '
+            f'cover boundary is {boundary_52198}, expected 7'
+        )
+    replacements[NATIVE_PLUGIN_ENTRIES_FUNCTION] = FunctionEdit(body=body_52198)
+
 
 def build_gateway(
     stock: HBCFile,
@@ -1361,6 +1404,7 @@ def build_gateway(
         raise AssertionError('Generated function count is incorrect')
     require_clean(target, 'Generated gateway template')
     assert_chat_avatar_motion(target, 'Generated gateway template')
+    assert_native_plugin_entries_hidden(target, 'Generated gateway template')
     structural_audit = audit_hbc(target)
     structural_audit.require_ok('Generated gateway template')
     summary = {
@@ -1373,6 +1417,7 @@ def build_gateway(
         'debugInfoOffset': target.header.debug_info_offset,
         'existingEdits': len(replacements),
         'chatAvatarMotion': 'live',
+        'nativePluginEntriesHidden': NATIVE_PLUGIN_ENTRIES_FUNCTION,
         'mobileSessionConvergenceBypass': MOBILE_SESSION_CONVERGENCE_FUNCTION,
         'addedFunctions': len(additions),
         'metadataAudit': {

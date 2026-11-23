@@ -157,6 +157,8 @@ def main():
     info['CFBundleURLTypes']=[{'CFBundleURLSchemes':['grokbot-local','gblocal','gblocal-ios'],'CFBundleURLName':a.bundle_id}]
     info['SandAppGroupIdentifier']=group
     info.pop('GrokBotPresenceAppGroup',None)
+    if isinstance(info.get('GrokAppProtection'),dict):
+        info['GrokAppProtection']={**info['GrokAppProtection'],'appGroupIdentifiers':[group],'keychainAccessGroups':[]}
     # Retain the original icon resources; cloud push is configured separately.
     info['NSAppTransportSecurity']={'NSAllowsArbitraryLoads':True,'NSAllowsLocalNetworking':True}
     info['NSLocalNetworkUsageDescription']='连接你配置的局域网 Host，接收消息并查看执行电脑。'

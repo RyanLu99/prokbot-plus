@@ -173,14 +173,21 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
     version suffixes are accepted and --host-only is not gated. Contributed by
     @jun9100 (GitHub pull request #5). Clients are unchanged.
 
-14. iOS 1.26.0 (29388) support with pinned 1.16.0 (23152) fallback.
-    - ios/recipes/ios/ pins official iOS 1.26.0 (build 29388) while keeping
-      ios/recipes/ios/1.16.0/ as a strictly pinned fallback; ios/patchers/ios/
-      extensions.py verifies per-release extension hashes without loosening pins.
-    - ios/clients/ios/ updates keychain credential sync, RN session config and
-      diagnostics; ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/
-      provide the deterministic HBC 98 parser, auditor and recipe generator.
-      Only deterministic byte patches are stored in the repository.
+14. iOS 1.27.0 (29519) support with pinned 1.26.0 (29388) and 1.16.0 (23152)
+    fallbacks.
+    - ios/recipes/ios/ pins official iOS 1.27.0 (build 29519) while keeping
+      ios/recipes/ios/1.26.0/ and ios/recipes/ios/1.16.0/ as strictly pinned
+      fallbacks; ios/patchers/ios/extensions.py verifies per-release extension
+      hashes and patches both Widgets.appex grokbot scheme sites in 1.27.0;
+      patch-app.py and signing.py isolate 1.27.0 Info.plist GrokAppProtection
+      App Group and keychain access groups.
+    - ios/clients/ios/ updates keychain credential sync, RN session config,
+      local Auto-review preference RPC interception, native Pages/Canvas RPC
+      forwarding and diagnostics; ios/tools/build_ios_127_recipe.py,
+      ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/ provide the
+      deterministic HBC 98 parser, auditor, 24-RPC BackendClient local bypass
+      table and recipe generators. Only deterministic byte patches are stored
+      in the repository.
 
 Third-party components
 ----------------------

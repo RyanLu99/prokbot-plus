@@ -82,7 +82,10 @@ static NSSet *GBConnectorMethods(void) {
     @"InstallUserPlugin", @"UninstallUserPlugin", @"UpdateUserPlugin", @"UpdateUserPluginVariables",
     @"RenameMcpOAuthAccount", @"DeleteMcpOAuthAccount", @"CheckHttpMcpStatus",
     @"CompleteMcpOAuth", @"GetPluginDetails", @"GetGrokBotMcpToolPermissions",
-    @"SetGrokBotMcpToolPermissions"
+    @"SetGrokBotMcpToolPermissions",
+    @"ListUserCanvases", @"GetCanvasMetadata", @"GetCanvasPayload",
+    @"SetCanvasVisibility", @"SetPageAddress", @"GetCanvasShareAccess",
+    @"UpdateCanvasShareAccess", @"RefreshCanvasSources"
   ]]; }); return methods;
 }
 static NSString *GBConnectorMethod(NSURLRequest *request) {
@@ -92,16 +95,43 @@ static NSString *GBConnectorMethod(NSURLRequest *request) {
   NSString *method = [path substringFromIndex:NSMaxRange(service)];
   return [GBConnectorMethods() containsObject:method] ? method : nil;
 }
+// Self-hosted Hosts do not have Cursor enterprise team policies or cloud
+// Background Composer preferences. In iOS 1.26+, Auto-review checks both RPCs
+// via PrReviewPreferencesService to see whether a team admin enforces it;
+// failing them locks the toggle with "Couldn't check your team's settings."
+// Mirror Desktop's empty local response (`{}`) when paired to a local Host.
+static NSData *GBLocalPreferenceResponse(NSURLRequest *request) {
+  if (![request.HTTPMethod isEqual:@"POST"]) return nil;
+  NSString *path = request.URL.path;
+  if ([path isEqual:@"/aiserver.v1.DashboardService/GetTeamAdminSettingsOrEmptyIfNotInTeam"] ||
+      [path isEqual:@"/aiserver.v1.BackgroundComposerService/GetBackgroundComposerUserSettings"]) {
+    return [@"{}" dataUsingEncoding:NSUTF8StringEncoding];
+  }
+  return nil;
+}
 @interface GBConnectorProtocol : NSURLProtocol
 @property(nonatomic,strong) NSURLSessionDataTask *task;
 @property(nonatomic,assign) BOOL cancelled;
 @end
 @implementation GBConnectorProtocol
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
-  return GBConnection.shared.deviceToken.length && GBConnectorMethod(request) != nil;
+  return GBConnection.shared.deviceToken.length &&
+    (GBConnectorMethod(request) != nil || GBLocalPreferenceResponse(request) != nil);
 }
 + (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request { return request; }
 - (void)startLoading {
+  NSData *localBody = GBLocalPreferenceResponse(self.request);
+  if (localBody) {
+    GBDiagnosticsEvent(@"local-rpc.handled", @{@"path": self.request.URL.path ?: @""});
+    NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:self.request.URL
+      statusCode:200 HTTPVersion:@"HTTP/1.1"
+      headerFields:@{@"Content-Type": @"application/json",
+                     @"Content-Length": [NSString stringWithFormat:@"%lu", (unsigned long)localBody.length]}];
+    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
+    [self.client URLProtocol:self didLoadData:localBody];
+    [self.client URLProtocolDidFinishLoading:self];
+    return;
+  }
   NSString *method = GBConnectorMethod(self.request);
   NSString *path = [@"/local/mobile-rpc/" stringByAppendingString:method];
   NSMutableURLRequest *request = [self.request mutableCopy];

@@ -5,6 +5,11 @@ import re
 import struct
 
 EXTENSIONS_BY_RELEASE = {
+    ('1.27.0', '29519'): {
+        'Widgets.appex': ('widgets', 'f0099f0a76eaed154724f1ab4229d047e84a53a43a801186e274bdd40f62feb0'),
+        'ImageShareExtension.appex': ('share', '799dc218e713251168c082ad2d2def4be22d033e0ac6172195e78af971d9a01a'),
+        'NotificationService.appex': ('NotificationService', '3d1fc6db37862406cfda7e8fdf2007693f85de53ae531cea59dc1a8b090f4e22'),
+    },
     ('1.26.0', '29388'): {
         'Widgets.appex': ('widgets', 'bb9293d61347ec69fc68b51319ee161e382ab985694296a4ffb21c566561cabd'),
         'ImageShareExtension.appex': ('share', '4fa14f55ba2300059a9bf7caf9b6ddc8cf30daa2713e0c4e4a4a10ed73eacbc6'),
@@ -17,7 +22,13 @@ EXTENSIONS_BY_RELEASE = {
     },
 }
 
-EXTENSIONS = EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]
+WIDGETS_SCHEME_COUNTS_BY_RELEASE = {
+    ('1.27.0', '29519'): 2,
+    ('1.26.0', '29388'): 1,
+    ('1.16.0', '23152'): 1,
+}
+
+EXTENSIONS = EXTENSIONS_BY_RELEASE[('1.27.0', '29519')]
 
 # The widget embeds its deep-link scheme as four back-to-back MOV-wide
 # immediates spelling "grokbot\0". Locate that exact sequence instead of
@@ -83,14 +94,20 @@ def prepare_extensions(app, bundle_id, group, commands, release=None):
         if name == 'Widgets.appex':
             # Original GrokBotActionURL builds a seven-character Swift string.
             # Keep its ABI/length and change only the four MOV-wide immediates.
-            offset = scheme_sites(data, start, length)
-            if len(offset) != 1:
-                raise ValueError('Expected exactly one widget scheme construction, found %d' % len(offset))
-            offset = offset[0]
-            for index, part in enumerate(WIDGETS_SCHEME_PARTS):
-                instruction = struct.unpack_from('<I', data, offset + index * 4)[0]
-                instruction = (instruction & ~(0xffff << 5)) | (part << 5)
-                struct.pack_into('<I', data, offset + index * 4, instruction)
+            expected_sites = WIDGETS_SCHEME_COUNTS_BY_RELEASE.get(
+                tuple(release) if release is not None else ('1.27.0', '29519'), 1
+            )
+            offsets = scheme_sites(data, start, length)
+            if len(offsets) != expected_sites:
+                raise ValueError(
+                    'Expected %d widget scheme construction(s), found %d'
+                    % (expected_sites, len(offsets))
+                )
+            for offset in offsets:
+                for index, part in enumerate(WIDGETS_SCHEME_PARTS):
+                    instruction = struct.unpack_from('<I', data, offset + index * 4)[0]
+                    instruction = (instruction & ~(0xffff << 5)) | (part << 5)
+                    struct.pack_into('<I', data, offset + index * 4, instruction)
         elif name == 'ImageShareExtension.appex':
             # Equal-length replacement also preserves the original CFString size.
             if data.count(b'sand-mobile\0') != 1:

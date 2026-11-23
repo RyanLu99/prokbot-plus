@@ -214,7 +214,7 @@ Bot 做有风险的操作前，原版会问官方分类服务。这里改用你�
 
 ### iOS 客户端
 
-原版 iOS 客户端用 React Native 开发。这里写了一个注入的动态库（Objective-C，源码在 `ios/clients/ios/`，`build.py` 编译），把发往官方的请求转到你的 Host，再对 Hermes 字节码做少量固定修改。小组件、分享和通知三个扩展保留，使用独立的 Bundle ID。补丁输出未签名的 IPA，主应用和三个扩展都要自己签名（见 [`ios/README.md`](../ios/README.md)）。1.26.0 的字节码补丁由 `ios/tools/build_ios_126_recipe.py` 与 `ios/tools/hbc98/` 按固定 SHA-256 的用户原版 HBC 和上一版模板工作区重建；工具生成未配对、网关模板和注入元数据，回放三份 recipe，并模拟 URL/token 注入后重新审计。`ios/recipes/ios/1.16.0/` 保留上游 1.16.0（23152）的固定回退补丁。仓库只保存确定性补丁，不保存原版或修改后的 HBC。
+原版 iOS 客户端用 React Native 开发。这里写了一个注入的动态库（Objective-C，源码在 `ios/clients/ios/`，`build.py` 编译），把发往官方的请求转到你的 Host，再对 Hermes 字节码做少量固定修改。小组件、分享和通知三个扩展保留，使用独立的 Bundle ID。补丁输出未签名的 IPA，主应用和三个扩展都要自己签名（见 [`ios/README.md`](../ios/README.md)）。1.27.0（29519）的字节码补丁由 `ios/tools/build_ios_127_recipe.py` 与 `ios/tools/hbc98/` 按固定 SHA-256 的用户原版 1.27.0 / 1.26.0 HBC 与归档 1.26.0 补丁语义移植重建（`ios/tools/build_ios_126_recipe.py` 用于重建 1.26.0）；工具生成未配对、网关模板和注入元数据，回放三份 recipe，并模拟 URL/token 注入后重新审计。`ios/recipes/ios/1.26.0/` 与 `ios/recipes/ios/1.16.0/` 保留 1.26.0（29388）和 1.16.0（23152）的固定回退补丁。仓库只保存确定性补丁，不保存原版或修改后的 HBC。
 
 <a id="voice"></a>
 ### 语音、推送和外网访问

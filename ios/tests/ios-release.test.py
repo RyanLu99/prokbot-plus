@@ -52,18 +52,27 @@ class ReleaseOutput(unittest.TestCase):
         self.assertEqual(list(self.root.iterdir()), [self.source])
 
     def test_accepts_pinned_fallback_release_and_enforces_per_release_extensions(self):
-        fallback_manifest = MANIFEST.parent / '1.16.0' / 'manifest.json'
-        self.assertTrue(fallback_manifest.is_file(), '1.16.0 fallback manifest must remain pinned')
-        fallback = json.loads(fallback_manifest.read_text(encoding='utf-8'))
-        self.assertEqual((fallback['version'], fallback['build']), ('1.16.0', '23152'))
-        self.app_metadata(fallback['version'], fallback['build'])
-        self.refused('Expected thin arm64 executable')
-        self.app_metadata(fallback['version'], fallback['build'] + '9')
-        self.refused('Unsupported app version')
+        for rel_dir, expected_pair in (('1.26.0', ('1.26.0', '29388')), ('1.16.0', ('1.16.0', '23152'))):
+            fallback_manifest = MANIFEST.parent / rel_dir / 'manifest.json'
+            self.assertTrue(fallback_manifest.is_file(), f'{rel_dir} fallback manifest must remain pinned')
+            fallback = json.loads(fallback_manifest.read_text(encoding='utf-8'))
+            self.assertEqual((fallback['version'], fallback['build']), expected_pair)
+            self.app_metadata(fallback['version'], fallback['build'])
+            self.refused('Expected thin arm64 executable')
+            self.app_metadata(fallback['version'], fallback['build'] + '9')
+            self.refused('Unsupported app version')
         sys.path.insert(0, str(PATCHER.parents[1] / 'patchers' / 'ios'))
         import extensions  # noqa: E402
+        self.assertIn(('1.27.0', '29519'), extensions.EXTENSIONS_BY_RELEASE)
         self.assertIn(('1.26.0', '29388'), extensions.EXTENSIONS_BY_RELEASE)
         self.assertIn(('1.16.0', '23152'), extensions.EXTENSIONS_BY_RELEASE)
+        self.assertEqual(extensions.WIDGETS_SCHEME_COUNTS_BY_RELEASE[('1.27.0', '29519')], 2)
+        self.assertEqual(extensions.WIDGETS_SCHEME_COUNTS_BY_RELEASE[('1.26.0', '29388')], 1)
+        self.assertEqual(extensions.WIDGETS_SCHEME_COUNTS_BY_RELEASE[('1.16.0', '23152')], 1)
+        self.assertNotEqual(
+            extensions.EXTENSIONS_BY_RELEASE[('1.27.0', '29519')]['Widgets.appex'][1],
+            extensions.EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]['Widgets.appex'][1],
+        )
         self.assertNotEqual(
             extensions.EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]['Widgets.appex'][1],
             extensions.EXTENSIONS_BY_RELEASE[('1.16.0', '23152')]['Widgets.appex'][1],
