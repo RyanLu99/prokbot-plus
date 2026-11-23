@@ -98,7 +98,7 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 | Android | Android 9+，系统 WebView 89+ | 本项目自开发的 App，不是官方 Android 版。在 Android 15 / 16 模拟器上测过，未经真机测试。 |
 | 网页版 | 新版 Chrome、Edge、Firefox、Safari | 由你的 Host 提供，手机、平板、电脑自动适配，用配对码登录。只操作 Bot 的电脑，不操作你本机。 |
 | Mac | Apple 芯片或 Intel 芯片 | 支持官方 1.2.3 的 Apple 芯片与 Intel 芯片（Intel 1.2.3 已在 Intel Mac 真机实测可用，Apple 芯片 1.2.3 已通过证书签名构建校验）。 |
-| iPhone / iPad | 自备已解密的 IPA 和签名证书 | 支持官方 1.27.0（构建 29519，推荐），保留 1.26.0（29388）和 1.16.0（23152）回退；1.27.0 已在 iPad Pro 真机实测覆盖升级、配对、对话附件、设置页自动审查开关与无重连通知流（尚未在 iPhone 完成全流程验收；归档 1.26.0 补丁 `0f82cc…` 较早期实测版新增隐藏内置原生插件入口；1.16.0 配新版注入库未经真机测试）。 |
+| iPhone / iPad | 自备已解密的 IPA 和签名证书 | 支持官方 1.27.0（构建 29519，推荐），可回退 1.26.0 和 1.16.0。贡献者在 iPad 上实测了 1.27.0 的升级、配对、对话和附件，iPhone 还没有完整测试。 |
 
 <a id="android-客户端"></a><a id="web-client"></a>
 **Android App** 不改官方 Android 版（它有防篡改保护），而是把官方桌面版的界面装进本项目写的外壳：能看 Bot 电脑的实时画面并接手操作，收通知不依赖 Google 推送。APK 用你自己的密钥签名。

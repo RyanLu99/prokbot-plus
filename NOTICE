@@ -15,7 +15,7 @@ modifications below. The noncommercial conditions also apply to everything
 ProkBot Plus adds; none of it is offered under terms that allow commercial use.
 CHANGELOG.md lists the changes by release.
 
-Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
+Modifications made in ProkBot Plus (2026-11-07 to 2026-11-24)
 --------------------------------------------------------------
 
 1. Windows x64 client (new)
@@ -191,44 +191,35 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
       targets and --check compares decompressed recipes.
     - Contributed by @jun9100 (GitHub pull request #11).
 
-16. Host client compatibility and reliability improvements.
-    - host/server/ adds client-compat-api.mjs for the Host-forwarded RPCs
-      missing in pinned d0a4baa (searchConversation, rerunAutomationFromCard,
-      runAutomationWebhook returning HTTP 501, resolveSkillPublishTargets),
-      bounded drain-aware SSE replay with live catch-up in notifications.mjs,
-      and 120s default upstream headers timeout in proxy.mjs.
-    - host/runtime/recovered-modules.mjs, recovered-blob-worker.mjs, and
-      host/release/compose*.yaml avoid main-thread PRAGMA quick_check stalls
-      when reopening large conversation-blobs.db files (>32 MiB by default,
-      configurable via GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES), running
-      node:sqlite PRAGMA quick_check(1) off the main event loop in a worker
-      thread (full scan for healthy databases, marking corrupted databases for
-      stock recovery on next open). Contributed by @jun9100 (GitHub pull
-      request #9).
+16. Host compatibility and reliability.
+    - host/server/client-compat-api.mjs (new) answers the RPCs newer clients
+      forward to the Host that d0a4baa lacks: in-conversation search,
+      rerunning an automation from its card, an empty skill publishing target
+      list and an explicit failure for webhook runs. notifications.mjs replays
+      retained notifications in bounded, backpressured writes; proxy.mjs
+      waits up to 120 s for response headers.
+    - host/runtime/recovered-blob-worker.mjs and recovered-modules.mjs open a
+      large conversation-blobs.db with a structural probe and run quick_check
+      in a background thread; a corrupted database goes through the original
+      recovery on the next open. host/release/compose*.yaml pass
+      GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES.
+    - Contributed by @jun9100 (GitHub pull request #9).
 
-17. iOS 1.27.0 (29519) support with pinned 1.26.0 (29388) and 1.16.0 (23152)
-    fallbacks.
-    - ios/recipes/ios/ pins official iOS 1.27.0 (build 29519) while keeping
-      ios/recipes/ios/1.26.0/ and ios/recipes/ios/1.16.0/ as strictly pinned
-      fallbacks (enforcing unique release pins); ios/patchers/ios/extensions.py
-      verifies per-release extension hashes, patches both Widgets.appex grokbot
-      scheme sites in 1.27.0, and isolates extension GrokAppProtection groups;
-      patch-app.py and signing.py isolate main/extension GrokAppProtection
-      (writing only granted App Groups), warn when a profile omits a requested
-      App Group, and write TeamIdentifier to Expo app.config.
-    - ios/clients/ios/ updates keychain credential sync (including full
-      multi-access-group cleanup, NSUserDefaults sync, and Caches/GrokBotPaired
-      removal on Settings-scoped Sign out), native Connect to Host entry on the
-      unpaired login screen, non-destructive NSURLSession factory swizzling
-      (leaving background session configurations untouched), local Auto-review
-      preference RPC interception, native Pages/Canvas RPC forwarding and
-      diagnostics; host/server/mobile-rpc-compat.mjs adds standalone Host
-      compatibility responses for the 8 Canvas/Pages RPCs and both MCP
-      tool-permission RPCs; ios/tools/build_ios_127_recipe.py,
-      ios/tools/build_ios_126_recipe.py and ios/tools/hbc98/ provide the
-      deterministic HBC 98 parser, auditor, 24-RPC BackendClient local bypass
-      table, pinned Canvas feature gates, and recipe generators. Only
-      deterministic byte patches are stored in the repository.
+17. iOS 1.27.0.
+    - ios/recipes/ios/ pins the official 1.27.0 (build 29519) and keeps 1.26.0
+      (29388) and 1.16.0 (23152) as pinned fallbacks. ios/tools/hbc98/,
+      build_ios_127_recipe.py and build_ios_126_recipe.py rebuild the bytecode
+      recipes from the user's own app.
+    - ios/patchers/ios/ checks extensions per release and writes only the App
+      Groups a provisioning profile grants (extensions.py, signing.py,
+      patch-app.py).
+    - ios/clients/ios/ and ios/bin/GrokBotLocal.dylib: keychain credential
+      sync, sign-out from Settings, a Connect to Host entry on the sign-in
+      screen, NSURLSession protocol injection that keeps the app's own
+      session configuration, local Auto-review preferences and Pages RPC
+      forwarding. host/server/mobile-rpc-compat.mjs (new) answers the Pages
+      and MCP tool permission RPCs.
+    - Contributed by @jun9100 (GitHub pull request #14).
 
 Third-party components
 ----------------------
