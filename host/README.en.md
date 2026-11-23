@@ -74,6 +74,7 @@ Then enter the node's address and key on the Host admin page and enable it. In `
 
 - LAN access: set `GROKBOT_NODE_LISTEN_ADDRESS=0.0.0.0`; the default port is 18443.
 - Embedded network: set `GROKBOT_TAILCAT_ENABLED=1`; advanced options are `GROKBOT_TAILCAT_RELAY` and `GROKBOT_TAILCAT_DERP_MAP_URL`.
+- Large blob DB fast-open threshold: by default the Host container opens `conversation-blobs.db` files `>= 32 MiB` via a structural probe and runs `PRAGMA quick_check(1)` asynchronously in a background worker thread (writing a recovery marker if corruption is found so the next open runs stock quarantine/salvage). Override the byte threshold with `GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES`, or set it to `infinity` to always run synchronous `quick_check` on open.
 
 <a id="capacity-benchmark"></a>
 ## Whole-machine benchmark

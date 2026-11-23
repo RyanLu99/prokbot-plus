@@ -36,7 +36,7 @@ import { provisionTeachSkill } from '../runtime/host-teach.mjs';
 import { PromptSettings } from './prompt-settings.mjs';
 import { internalHostClient } from './internal-host.mjs';
 import { mobileAppIntentMethods, mobileAppIntentRpc } from './mobile-app-intents.mjs';
-import { clientCompatMethods, handleClientCompatRpc } from './client-compat-api.mjs';
+import { clientCompatMethods, handleClientCompatRpc, MainAgentStore } from './client-compat-api.mjs';
 import { adminExtensions } from './admin-extensions.mjs';
 import { recentRouting } from '../runtime/routing-log.mjs';
 import { todayUsage } from "../runtime/usage-ledger.mjs";
@@ -159,6 +159,7 @@ export async function createSelfHostServer(options = {}) {
     hostCall: internalHostClient(hostUrl, internalToken) }).load();
   const notifications = await new Notifications(dataDir, { onPublish: item => push.enqueue(item) }).load();
   const notificationSettings = await new NotificationSettings(dataDir).load();
+  const mainAgentStore = await new MainAgentStore(dataDir).load();
   const tickets = new VncTickets(auth, options.ticketOptions);
   const connections = new DeviceConnections();
   federation.onRoleChange = () => connections.close();
@@ -824,7 +825,7 @@ export async function createSelfHostServer(options = {}) {
       if (clientCompatMethods.has(path.slice("/api/".length))) {
         const method = path.slice("/api/".length);
         const input = await jsonBody(request, 128 * 1024, { allowEmpty: true });
-        return sendJson(response, 200, await handleClientCompatRpc(method, input, internalHostClient(hostUrl, internalToken)));
+        return sendJson(response, 200, await handleClientCompatRpc(method, input, internalHostClient(hostUrl, internalToken), { mainAgentStore }));
       }
       if (path === "/api/deleteAgents")
         return deleteAgentsWithLibrary(request, response, {

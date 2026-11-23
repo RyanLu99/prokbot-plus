@@ -1,15 +1,25 @@
 import { createHash } from 'node:crypto';
-import { statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { isMainThread, threadId } from 'node:worker_threads';
+import { Worker, isMainThread, threadId } from 'node:worker_threads';
 import { constructRecoveredModules } from './recovered-modules.mjs';
 import inputs from '../recipes/host/manifest.json' with { type: 'json' };
 
 const sourceSha256 = inputs.sourceSha256['agent-isolation/agent-store-worker.cjs'];
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES = 32 * 1024 * 1024;
+const DEFAULT_BACKGROUND_CHECK_DELAY_MS = 2_000;
+const activeBackgroundChecks = new Set();
+
+export function quickCheckRequiredMarkerPath(dbPath) {
+  return `${dbPath}.quickcheck-required`;
+}
+
+export function quickCheckVerifiedMarkerPath(dbPath) {
+  return `${dbPath}.quickcheck-verified.json`;
+}
 
 export function blobQuickCheckMaxBytes(env = process.env) {
   const raw = env?.GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES?.trim();
@@ -19,37 +29,209 @@ export function blobQuickCheckMaxBytes(env = process.env) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES;
 }
 
+function isVerifiedForStat(dbPath, statInfo, { exists, readText }) {
+  const markerPath = quickCheckVerifiedMarkerPath(dbPath);
+  if (!exists(markerPath)) return false;
+  try {
+    const parsed = JSON.parse(readText(markerPath));
+    return (
+      parsed?.path === dbPath &&
+      parsed?.size === statInfo.size &&
+      parsed?.mtimeMs === statInfo.mtimeMs
+    );
+  } catch {
+    return false;
+  }
+}
+
+function recordVerified(dbPath, statInfo, { writeText, unlink }) {
+  try { unlink(quickCheckRequiredMarkerPath(dbPath)); } catch {}
+  try {
+    writeText(
+      quickCheckVerifiedMarkerPath(dbPath),
+      JSON.stringify({
+        path: dbPath,
+        size: statInfo.size,
+        mtimeMs: statInfo.mtimeMs,
+        checkedAt: Date.now(),
+      }),
+    );
+  } catch {}
+}
+
+function recordCorruption(dbPath, reason, { writeText, unlink }) {
+  try { unlink(quickCheckVerifiedMarkerPath(dbPath)); } catch {}
+  try {
+    writeText(
+      quickCheckRequiredMarkerPath(dbPath),
+      JSON.stringify({
+        path: dbPath,
+        reason: String(reason || 'quick_check failed'),
+        detectedAt: Date.now(),
+      }),
+    );
+  } catch {}
+}
+
+const BACKGROUND_QUICK_CHECK_WORKER_SOURCE = `
+const { workerData, parentPort } = require('node:worker_threads');
+const { dbPath, busyTimeoutMs } = workerData;
+let db;
+try {
+  let Database;
+  try {
+    Database = require('better-sqlite3');
+  } catch {
+    parentPort.postMessage({ status: 'skipped', reason: 'better-sqlite3 unavailable' });
+    process.exit(0);
+  }
+  db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: busyTimeoutMs });
+  const row = db.prepare('PRAGMA quick_check(1)').get();
+  const value = row ? Object.values(row)[0] : null;
+  if (value === 'ok') {
+    parentPort.postMessage({ status: 'ok' });
+  } else {
+    parentPort.postMessage({ status: 'corrupt', reason: String(value ?? 'unexpected quick_check result') });
+  }
+} catch (error) {
+  const code = String(error?.code ?? '');
+  const message = String(error?.message ?? error);
+  if (code.includes('BUSY') || code.includes('LOCKED') || /database is locked/i.test(message)) {
+    parentPort.postMessage({ status: 'busy', reason: message });
+  } else if (code.includes('CORRUPT') || code.includes('NOTADB') || /malformed|corrupt|not a database/i.test(message)) {
+    parentPort.postMessage({ status: 'corrupt', reason: message });
+  } else {
+    parentPort.postMessage({ status: 'error', reason: message });
+  }
+} finally {
+  try { db?.close(); } catch {}
+}
+`;
+
+export function defaultScheduleBackgroundQuickCheck({
+  dbPath,
+  statInfo,
+  busyTimeoutMs = 5000,
+  delayMs = DEFAULT_BACKGROUND_CHECK_DELAY_MS,
+  onOutcome,
+}) {
+  if (activeBackgroundChecks.has(dbPath)) return;
+  activeBackgroundChecks.add(dbPath);
+  const timer = setTimeout(() => {
+    let settled = false;
+    const finish = outcome => {
+      if (settled) return;
+      settled = true;
+      activeBackgroundChecks.delete(dbPath);
+      onOutcome?.(outcome);
+    };
+    try {
+      const worker = new Worker(BACKGROUND_QUICK_CHECK_WORKER_SOURCE, {
+        eval: true,
+        workerData: { dbPath, busyTimeoutMs },
+      });
+      worker.unref();
+      worker.once('message', message => {
+        finish(message);
+        void worker.terminate().catch(() => {});
+      });
+      worker.once('error', error => {
+        finish({ status: 'error', reason: error?.message ?? String(error) });
+      });
+      worker.once('exit', () => {
+        finish({ status: 'skipped', reason: 'worker exited' });
+      });
+    } catch (error) {
+      finish({ status: 'error', reason: error?.message ?? String(error) });
+    }
+  }, delayMs);
+  timer.unref?.();
+}
+
 /** Avoid blocking worker init for 60s+ on PRAGMA quick_check for multi-hundred-MB blob DBs. */
 export function wrapOpenConversationBlobDb(
   originalOpen,
   bindings,
-  { maxQuickCheckBytes = blobQuickCheckMaxBytes(), stat = statSync } = {},
+  {
+    maxQuickCheckBytes = blobQuickCheckMaxBytes(),
+    stat = statSync,
+    exists = existsSync,
+    readText = path => readFileSync(path, 'utf8'),
+    writeText = (path, content) => writeFileSync(path, content, 'utf8'),
+    unlink = unlinkSync,
+    backgroundDelayMs = DEFAULT_BACKGROUND_CHECK_DELAY_MS,
+    scheduleBackgroundCheck = defaultScheduleBackgroundQuickCheck,
+  } = {},
 ) {
+  const io = { exists, readText, writeText, unlink };
   return function openConversationBlobDbWithLargeDbFastPath(options) {
     if (!options?.dbPath || maxQuickCheckBytes === Number.POSITIVE_INFINITY) {
-      return originalOpen(options);
+      const db = originalOpen(options);
+      if (options?.dbPath) {
+        try {
+          const info = stat(options.dbPath);
+          recordVerified(options.dbPath, info, io);
+        } catch {}
+      }
+      return db;
     }
-    let size = 0;
+    let statInfo;
     try {
-      size = stat(options.dbPath).size;
+      statInfo = stat(options.dbPath);
     } catch {
       return originalOpen(options);
     }
-    if (size < maxQuickCheckBytes) return originalOpen(options);
+    if (statInfo.size < maxQuickCheckBytes) {
+      const db = originalOpen(options);
+      try {
+        recordVerified(options.dbPath, stat(options.dbPath), io);
+      } catch {}
+      return db;
+    }
+    const recovery = options.recovery ?? bindings.DISK_RECOVERY;
+    if (
+      bindings.findPendingRecovery(options.dbPath, recovery) != null ||
+      exists(quickCheckRequiredMarkerPath(options.dbPath))
+    ) {
+      const db = originalOpen(options);
+      try {
+        recordVerified(options.dbPath, stat(options.dbPath), io);
+      } catch {}
+      return db;
+    }
     let db;
     try {
-      const recovery = options.recovery ?? bindings.DISK_RECOVERY;
-      if (bindings.findPendingRecovery(options.dbPath, recovery) != null) {
-        return originalOpen(options);
-      }
       db = bindings.openConfiguredConversationBlobDb(options.dbPath, options.busyTimeoutMs);
       db.prepare('PRAGMA schema_version').get();
       db.prepare('SELECT id FROM blobs LIMIT 1').get();
-      return db;
     } catch {
       try { db?.close(); } catch {}
-      return originalOpen(options);
+      const recovered = originalOpen(options);
+      try {
+        recordVerified(options.dbPath, stat(options.dbPath), io);
+      } catch {}
+      return recovered;
     }
+    if (!isVerifiedForStat(options.dbPath, statInfo, io)) {
+      scheduleBackgroundCheck({
+        dbPath: options.dbPath,
+        statInfo,
+        busyTimeoutMs: options.busyTimeoutMs ?? 5000,
+        delayMs: backgroundDelayMs,
+        onOutcome: outcome => {
+          if (outcome?.status === 'ok') {
+            recordVerified(options.dbPath, statInfo, io);
+          } else if (outcome?.status === 'corrupt') {
+            recordCorruption(options.dbPath, outcome.reason, io);
+            console.error(
+              '[recovered-blob-worker] background quick_check failed; full recovery scheduled on next open: ' +
+                JSON.stringify({ dbPath: options.dbPath, reason: outcome.reason }),
+            );
+          }
+        },
+      });
+    }
+    return db;
   };
 }
 

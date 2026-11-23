@@ -74,6 +74,7 @@ docker compose -f release/compose.execution.yaml up -d --build
 
 - 局域网访问：设置 `GROKBOT_NODE_LISTEN_ADDRESS=0.0.0.0`，端口默认 18443。
 - 内嵌网络：设置 `GROKBOT_TAILCAT_ENABLED=1`；高级选项是 `GROKBOT_TAILCAT_RELAY` 和 `GROKBOT_TAILCAT_DERP_MAP_URL`。
+- 大体积 Blob 库快速打开阈值：Host 容器默认对大于等于 `32 MiB` 的 `conversation-blobs.db` 先做结构探针并在后台线程异步补跑 `PRAGMA quick_check(1)`（发现损坏会写入恢复标记，下次打开自动走原版隔离抢救）。可通过 `GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES` 调整字节阈值，设为 `infinity` 则强制每次启动同步执行完整 `quick_check`。
 
 <a id="capacity-benchmark"></a>
 ## 整机基准

@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import {
   DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES,
   blobQuickCheckMaxBytes,
+  quickCheckRequiredMarkerPath,
+  quickCheckVerifiedMarkerPath,
   wrapOpenConversationBlobDb,
 } from '../runtime/recovered-blob-worker.mjs';
 import { constructRecoveredModules } from '../runtime/recovered-modules.mjs';
@@ -23,6 +25,14 @@ test('blobQuickCheckMaxBytes parses defaults, overrides, and infinity', () => {
 test('wrapOpenConversationBlobDb delegates small, missing, infinity, and pending-recovery DBs to original', () => {
   let originalCalls = 0;
   const originalOpen = opts => ({ kind: 'original', call: ++originalCalls, path: opts.dbPath });
+  const files = new Map();
+  const io = {
+    exists: p => files.has(p),
+    readText: p => files.get(p),
+    writeText: (p, v) => files.set(p, v),
+    unlink: p => files.delete(p),
+    scheduleBackgroundCheck: () => { throw new Error('should not schedule'); },
+  };
   const bindings = {
     DISK_RECOVERY: { tag: 'disk' },
     findPendingRecovery: () => undefined,
@@ -30,20 +40,23 @@ test('wrapOpenConversationBlobDb delegates small, missing, infinity, and pending
   };
 
   const smallOpen = wrapOpenConversationBlobDb(originalOpen, bindings, {
+    ...io,
     maxQuickCheckBytes: 1000,
-    stat: () => ({ size: 999 }),
+    stat: () => ({ size: 999, mtimeMs: 100 }),
   });
   assert.equal(smallOpen({ dbPath: '/tmp/a.db', busyTimeoutMs: 5000 }).kind, 'original');
 
   const missingOpen = wrapOpenConversationBlobDb(originalOpen, bindings, {
+    ...io,
     maxQuickCheckBytes: 1000,
     stat: () => { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); },
   });
   assert.equal(missingOpen({ dbPath: '/tmp/missing.db', busyTimeoutMs: 5000 }).kind, 'original');
 
   const forcedQuickCheckOpen = wrapOpenConversationBlobDb(originalOpen, bindings, {
+    ...io,
     maxQuickCheckBytes: Number.POSITIVE_INFINITY,
-    stat: () => ({ size: 2_000_000_000 }),
+    stat: () => ({ size: 2_000_000_000, mtimeMs: 200 }),
   });
   assert.equal(forcedQuickCheckOpen({ dbPath: '/tmp/huge.db', busyTimeoutMs: 5000 }).kind, 'original');
 
@@ -51,14 +64,15 @@ test('wrapOpenConversationBlobDb delegates small, missing, infinity, and pending
     ...bindings,
     findPendingRecovery: () => ({ pendingPath: '/tmp/huge.db.pending', quarantinePath: '/tmp/huge.db.corrupt' }),
   }, {
+    ...io,
     maxQuickCheckBytes: 1000,
-    stat: () => ({ size: 2_000_000_000 }),
+    stat: () => ({ size: 2_000_000_000, mtimeMs: 200 }),
   });
   assert.equal(pendingOpen({ dbPath: '/tmp/huge.db', busyTimeoutMs: 5000 }).kind, 'original');
   assert.equal(originalCalls, 4);
 });
 
-test('wrapOpenConversationBlobDb uses fast structural probe for large healthy DB and falls back on error', () => {
+test('wrapOpenConversationBlobDb schedules background quick_check, records verified marker, and triggers full recovery on corruption', () => {
   const queries = [];
   let closed = false;
   const fakeDb = {
@@ -70,6 +84,15 @@ test('wrapOpenConversationBlobDb uses fast structural probe for large healthy DB
   };
   let originalCalls = 0;
   const originalOpen = () => ({ kind: 'original', call: ++originalCalls });
+  const files = new Map();
+  const scheduled = [];
+  const io = {
+    exists: p => files.has(p),
+    readText: p => files.get(p),
+    writeText: (p, v) => files.set(p, v),
+    unlink: p => files.delete(p),
+    scheduleBackgroundCheck: job => scheduled.push(job),
+  };
   const bindings = {
     DISK_RECOVERY: { tag: 'disk' },
     findPendingRecovery: () => undefined,
@@ -80,16 +103,43 @@ test('wrapOpenConversationBlobDb uses fast structural probe for large healthy DB
     },
   };
 
+  let currentStat = { size: 2_000_000_000, mtimeMs: 1000 };
   const fastOpen = wrapOpenConversationBlobDb(originalOpen, bindings, {
+    ...io,
     maxQuickCheckBytes: 1024,
-    stat: () => ({ size: 2_000_000_000 }),
+    stat: () => currentStat,
   });
+
+  // First open uses fast path and schedules one background quick_check.
   const opened = fastOpen({ dbPath: '/data/conversation-blobs.db', busyTimeoutMs: 5000 });
   assert.equal(opened, fakeDb);
   assert.equal(originalCalls, 0);
   assert.equal(closed, false);
   assert.deepEqual(queries, ['PRAGMA schema_version', 'SELECT id FROM blobs LIMIT 1']);
+  assert.equal(scheduled.length, 1);
 
+  // When background quick_check passes, verified marker prevents redundant rescan for same size+mtimeMs.
+  scheduled[0].onOutcome({ status: 'ok' });
+  assert.equal(files.has(quickCheckVerifiedMarkerPath('/data/conversation-blobs.db')), true);
+  assert.equal(fastOpen({ dbPath: '/data/conversation-blobs.db', busyTimeoutMs: 5000 }), fakeDb);
+  assert.equal(scheduled.length, 1);
+
+  // When the file changes and background quick_check detects corruption, it writes the recovery marker.
+  currentStat = { size: 2_000_004_096, mtimeMs: 2000 };
+  assert.equal(fastOpen({ dbPath: '/data/conversation-blobs.db', busyTimeoutMs: 5000 }), fakeDb);
+  assert.equal(scheduled.length, 2);
+  scheduled[1].onOutcome({ status: 'corrupt', reason: 'malformed page 42' });
+  assert.equal(files.has(quickCheckRequiredMarkerPath('/data/conversation-blobs.db')), true);
+  assert.equal(files.has(quickCheckVerifiedMarkerPath('/data/conversation-blobs.db')), false);
+
+  // Next open delegates to stock originalOpen for quarantine/salvage and clears the required marker.
+  const recovered = fastOpen({ dbPath: '/data/conversation-blobs.db', busyTimeoutMs: 5000 });
+  assert.equal(recovered.kind, 'original');
+  assert.equal(originalCalls, 1);
+  assert.equal(files.has(quickCheckRequiredMarkerPath('/data/conversation-blobs.db')), false);
+  assert.equal(files.has(quickCheckVerifiedMarkerPath('/data/conversation-blobs.db')), true);
+
+  // Structural probe failure falls back immediately to originalOpen.
   const corruptFastOpen = wrapOpenConversationBlobDb(originalOpen, {
     ...bindings,
     openConfiguredConversationBlobDb: () => ({
@@ -100,12 +150,13 @@ test('wrapOpenConversationBlobDb uses fast structural probe for large healthy DB
       close() { closed = true; },
     }),
   }, {
+    ...io,
     maxQuickCheckBytes: 1024,
-    stat: () => ({ size: 2_000_000_000 }),
+    stat: () => ({ size: 2_000_000_000, mtimeMs: 3000 }),
   });
   const fallback = corruptFastOpen({ dbPath: '/data/conversation-blobs.db', busyTimeoutMs: 5000 });
   assert.equal(fallback.kind, 'original');
-  assert.equal(originalCalls, 1);
+  assert.equal(originalCalls, 2);
   assert.equal(closed, true);
 });
 

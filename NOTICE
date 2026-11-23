@@ -174,12 +174,15 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-23)
     @jun9100 (GitHub pull request #5). Clients are unchanged.
 
 14. Host client compatibility and reliability improvements.
-    - host/server/ adds client-compat-api.mjs for newer Desktop 1.2.3 / iOS
-      1.26.0 RPCs, bounded drain-aware SSE replay with live catch-up in
-      notifications.mjs, and 120s default upstream headers timeout in proxy.mjs.
+    - host/server/ adds client-compat-api.mjs (with MainAgentStore) for newer
+      Desktop 1.2.3 / iOS 1.26.0 / 1.27.0 RPCs, bounded drain-aware SSE replay
+      with live catch-up in notifications.mjs, and 120s default upstream headers
+      timeout in proxy.mjs.
     - host/runtime/recovered-modules.mjs and recovered-blob-worker.mjs avoid
       synchronous full-DB PRAGMA quick_check stalls when reopening large
-      conversation-blobs.db files, falling back to original recovery on error.
+      conversation-blobs.db files, scheduling off-thread quick_check(1)
+      verification that marks corrupted databases for stock recovery on next
+      open.
 
 Third-party components
 ----------------------
