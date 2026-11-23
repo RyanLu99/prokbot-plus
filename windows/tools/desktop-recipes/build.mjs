@@ -7,13 +7,14 @@
 //   node windows/tools/desktop-recipes/build.mjs [--target windows|mac-arm64|mac-x64] [--source <installer|app>] [--check]
 //
 // Without --source the pinned installer is downloaded and verified like patch.mjs does.
-// --check rebuilds in memory and fails unless the committed recipes are byte-identical.
+// --check rebuilds in memory and fails unless the committed recipes say the same thing. gzip output
+// differs between zlib builds, so recipes compare decompressed and the manifest pins the committed bytes.
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { gzipSync, constants } from 'node:zlib';
+import { gunzipSync, gzipSync, constants } from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
 import { acquireDesktopSource } from '../../../mac/patchers/desktop/download-original.mjs';
@@ -148,7 +149,15 @@ async function main() {
     if (args.includes('--check')) {
       const committed = (await readdir(recipes)).sort();
       const stale = [...files.keys()].filter(name => !committed.includes(name)).concat(committed.filter(name => !files.has(name)));
-      for (const [name, bytes] of files) if (committed.includes(name) && !bytes.equals(await readFile(path.join(recipes, name)))) stale.push(name);
+      const pinned = JSON.parse(await readFile(path.join(recipes, 'manifest.json'), 'utf8'));
+      const unpinned = manifest => JSON.stringify([manifest.schema, manifest.files.map(({ sha256, ...entry }) => entry)]);
+      for (const [name, bytes] of files) {
+        if (!committed.includes(name)) continue;
+        const saved = await readFile(path.join(recipes, name));
+        const same = name === 'manifest.json' ? unpinned(JSON.parse(bytes)) === unpinned(pinned)
+          : gunzipSync(bytes).equals(gunzipSync(saved)) && pinned.files.find(entry => entry.recipe === name)?.sha256 === sha(saved);
+        if (!same) stale.push(name);
+      }
       if (stale.length) throw new Error(`Committed recipes differ from spec.mjs (${target}): ${stale.join(', ')}`);
     } else {
       await mkdir(recipes, { recursive: true });

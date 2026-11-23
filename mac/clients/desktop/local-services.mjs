@@ -208,7 +208,7 @@ export async function createLocalServices(profile, window, { command, request, a
     getCurrentMachineMessagesEnabled: () => false,
     getMacMailSendEnabled: () => false,
     getMessagesCapabilities: () => ({ available: false, canSend: false, canRead: false }),
-    readScmConnections: () => ({}),
+    readScmConnections: () => ({ github: false, gitlab: false, bitbucket: false, 'azure-devops': false }),
     isSlackLinked: () => false,
     listSlackLinkedWorkspaces: () => [],
     listSecrets: () => [],
