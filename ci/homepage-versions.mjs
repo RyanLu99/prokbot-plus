@@ -86,7 +86,7 @@ export function render(text, lang, data) {
     '| --- | --- | --- |',
     `| Windows x64 | [${snap.windows.version}](${official.win})${note ? (zh ? `（${note}）` : ` (${note})`) : ''} | ${windowsNeeds} |`,
     `| macOS ARM64 | [${snap.mac.version}](${official.mac}) | ${mac.version}${zh ? `（${macNote}未在 Mac 真机上测试）` : ` (${macNote}not tested on a Mac)`} |`,
-    `| macOS Intel (x64) | [${snap.mac.version}](${official.macIntel}) | ${macIntel.version}${zh ? `（实验：${macNote}已有用户在 Intel Mac 上实测可用）` : ` (experimental: ${macNote}confirmed working by a user on an Intel Mac)`} |`,
+    `| macOS Intel (x64) | [${snap.mac.version}](${official.macIntel}) | ${macIntel.version}${zh ? `（${macNote}已在 Intel Mac 上实测 1.2.3 可用）` : ` (${macNote}tested working on an Intel Mac with 1.2.3)`} |`,
     `| iOS | [${snap.ios.version}](${official.ios})${iosUnsupported ? (zh ? `（${iosUnsupported}）` : ` (${iosUnsupported})`) : ''} | ${ios.version}${zh ? `（构建 ${ios.build}；已在 iPad 上验证连接、发消息和 App Intent）` : ` (build ${ios.build}; pairing, messaging and App Intents verified on an iPad)`} |`,
     zh ? `| Android 9+（自开发，非官方） | 不用官方 Android 版 | App **${android.shell.versionName}**（构建 ${android.shell.versionCode}），界面取自 Windows **${android.desktopVersion}** 安装包${androidNeeds} |` :
       `| Android 9+ (unofficial) | Does not use the official Android app | App **${android.shell.versionName}** (build ${android.shell.versionCode}), interface taken from the Windows **${android.desktopVersion}** installer${androidNeeds} |`,

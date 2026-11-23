@@ -66,7 +66,7 @@ for (const name of ['mac', 'windows']) {
   desktopPins[`${name}/patchers/desktop`] = { original, pins };
   versions[name] = original.version;
 }
-// The Intel macOS build of the same version, with recipes ported from the Apple silicon ones.
+// The Intel macOS build of the same version, generated from the same anchored desktop spec.
 {
   const dir = 'mac/patchers/desktop/x64';
   const { original, pins } = await checkDesktop(dir);
