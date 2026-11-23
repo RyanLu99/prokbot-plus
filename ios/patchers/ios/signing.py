@@ -5,6 +5,7 @@ import os
 import plistlib
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -36,6 +37,13 @@ def entitlements(info, bundle_id, group=None, parent_id=None):
     if group:
         if group in allowed.get('com.apple.security.application-groups', []):
             result['com.apple.security.application-groups'] = [group]
+        else:
+            print(
+                f'Warning: provisioning profile for {bundle_id} does not authorize App Group {group}; '
+                'omitting com.apple.security.application-groups (widgets, share and notification '
+                'extensions may not share state with the main app).',
+                file=sys.stderr,
+            )
     environment = allowed.get('aps-environment')
     if environment in ('development', 'production'):
         if allowed['application-identifier'] != expected:
@@ -44,8 +52,8 @@ def entitlements(info, bundle_id, group=None, parent_id=None):
     return result
 
 
-def update_expo_config(app, prefix):
-    """Point Expo's token store at the selected team without breaking integrity."""
+def update_expo_config(app, team_id):
+    """Point Expo's token store at the selected TeamIdentifier without breaking integrity."""
 
     path = app / 'EXConstants.bundle' / 'app.config'
     if not path.is_file():
@@ -60,8 +68,8 @@ def update_expo_config(app, prefix):
     extra = config.get('extra')
     if not isinstance(ios, dict) or not isinstance(extra, dict):
         raise ValueError('Expo app.config is missing ios or extra')
-    ios['appleTeamId'] = prefix
-    extra['appleTeamId'] = prefix
+    ios['appleTeamId'] = team_id
+    extra['appleTeamId'] = team_id
     extra.pop('previousAppleTeamId', None)
     payload = json.dumps(config, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
     original_size = path.stat().st_size
@@ -151,6 +159,7 @@ def sign(app, identity, main_profile, extension_profiles, group, records, comman
                 if isinstance(info.get('GrokAppProtection'), dict):
                     info['GrokAppProtection'] = {
                         **info['GrokAppProtection'],
+                        'appGroupIdentifiers': [group] if group else [],
                         'keychainAccessGroups': values['keychain-access-groups'],
                     }
                 (target / 'Info.plist').write_bytes(plistlib.dumps(info))
@@ -159,8 +168,8 @@ def sign(app, identity, main_profile, extension_profiles, group, records, comman
             groups = entitlements_allowed_groups(main_profile, group) if records else []
             values = {'com.apple.security.application-groups': groups} if groups else {}
         prepared.append((target, values, data))
-    if prefix:
-        update_expo_config(app, prefix)
+    if team:
+        update_expo_config(app, team)
     executables = {target / plistlib.loads((target / 'Info.plist').read_bytes())['CFBundleExecutable']
                    for target, _, _ in prepared}
     for binary in sorted(app.rglob('*'), key=lambda path: -len(path.parts)):

@@ -31,8 +31,9 @@ python3 release/patch-ios.py \
 | NotificationService | `<主应用 ID>.NotificationService` |
 
 - 四个目标使用同一个 App Group，默认是 `group.<主应用 ID>`，可以用 `--app-group` 指定。
-- 共享钥匙串组是 `<AppIdentifierPrefix>.<主应用 ID>.shared`。把它加进四个目标的签名 entitlement，并把各目标 Info.plist 的 `SandKeychainAccessGroups` 设为包含这个组的数组。
-- 生成的 `extension-signing.json` 列出了上面这些配置。
+- 共享钥匙串组是 `<AppIdentifierPrefix>.<主应用 ID>.shared`。把它加进四个目标的签名 entitlement，并把各目标 Info.plist 的 `SandKeychainAccessGroups` 设为包含这个组的数组。若主应用或扩展的 Info.plist 含有 `GrokAppProtection` 字典，也需要同步改写其中的 `appGroupIdentifiers` 与 `keychainAccessGroups`（`patch-app.py` 与 `extensions.py` 会自动隔离）。
+- 生成的 `extension-signing.json` 列出了上面这些配置（含 `GrokAppProtection` 说明）。
+- 保留扩展但签名描述文件缺少对应 App Group 时，`signing.py` 会输出明确警告并跳过该 entitlement（小组件、分享与通知扩展将无法与主应用共享状态）。
 - 安装包带 APNs 权限时用 APNs，推送凭证在 Host 里配置；没有 APNs 权限时，在 App 的通知设置里填写 Bark 链接。
 
 ## 许可与支持

@@ -98,6 +98,72 @@ static NSSet<NSString *> *GBSignOutLabels(void) {
 static BOOL GBIsPluginTag(NSInteger tag) {
   return tag >= 731988 && tag <= 731999;
 }
+static BOOL GBHasAncestorPluginTag(UIView *view, NSInteger tag) {
+  for (UIView *v = view.superview; v; v = v.superview) {
+    if (v.tag == tag) return YES;
+    for (UIView *sub in v.subviews)
+      if (sub.tag == tag) return YES;
+  }
+  return NO;
+}
+static BOOL GBSubtreeHasStyledHostButton(UIView *root, UIView *excluding) {
+  if (!root || root == excluding || root.hidden || root.alpha < 0.01) return NO;
+  if (root.tag == 731991 && [root isKindOfClass:UIButton.class]) {
+    UIButton *btn = (UIButton *)root;
+    if (btn.configuration != nil) return YES;
+  }
+  for (UIView *child in root.subviews) {
+    if (GBSubtreeHasStyledHostButton(child, excluding)) return YES;
+  }
+  return NO;
+}
+static NSSet<NSString *> *GBSettingsContextLabels(void) {
+  static NSSet<NSString *> *set;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    set = [NSSet setWithArray:@[
+      @"Account", @"账户", @"帳戶",
+      @"Auto-review", @"自动审查", @"自動審查",
+      @"Language", @"语言", @"語言",
+      @"Usage", @"用量",
+      @"dev-gateway@localhost", @"dev-gateway@localhost avatar"
+    ]];
+  });
+  return set;
+}
+static BOOL GBSubtreeContainsSettingsMarker(UIView *root, NSSet<NSString *> *markers, NSUInteger depth) {
+  if (!root || root.hidden || root.alpha < 0.01 || depth > 24) return NO;
+  if (root.tag == 731993) return YES;
+  NSString *raw = root.accessibilityLabel;
+  if ([root isKindOfClass:UILabel.class]) raw = ((UILabel *)root).text;
+  if (raw.length) {
+    NSString *trimmed = [raw stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if ([markers containsObject:trimmed]) return YES;
+  }
+  for (UIView *child in root.subviews) {
+    if (GBSubtreeContainsSettingsMarker(child, markers, depth + 1)) return YES;
+  }
+  return NO;
+}
+static BOOL GBIsSettingsSignOutContext(UIView *view) {
+  // Scope Sign out interception to the enclosing Settings/Account screen
+  // controller so similarly labeled buttons inside Connected Apps or OAuth
+  // sub-screens cannot accidentally disconnect the Host.
+  UIView *scope = nil;
+  for (UIResponder *responder = view.nextResponder; responder; responder = responder.nextResponder) {
+    if ([responder isKindOfClass:UIViewController.class]) {
+      scope = ((UIViewController *)responder).view;
+      break;
+    }
+  }
+  if (!scope) scope = view.window;
+  if (!scope) return NO;
+  return GBSubtreeContainsSettingsMarker(scope, GBSettingsContextLabels(), 0);
+}
+static void GBClearHostSettingsIdentifier(UIView *view) {
+  if ([view.accessibilityIdentifier isEqual:@"grokbot.host.settings"])
+    view.accessibilityIdentifier = nil;
+}
 @interface GBInterface : NSObject
 + (void)showConnection;
 + (void)confirmSignOut;
@@ -119,6 +185,8 @@ static BOOL GBIsPluginTag(NSInteger tag) {
     [GBConnection.shared disconnect];
     return;
   }
+  if ([top isKindOfClass:UIAlertController.class])
+    return;
   UIAlertController *alert = [UIAlertController
       alertControllerWithTitle:GBL(@"退出登录？", @"Sign out?")
                        message:GBL(@"将清除本机的 Host 地址与配对凭证，重新打开后需要重新连接 Host。",
@@ -177,13 +245,18 @@ static BOOL GBIsPluginTag(NSInteger tag) {
   NSSet<NSString *> *primaryLogin = GBPrimaryLoginLabels();
   NSSet<NSString *> *secondaryLogin = GBSecondaryLoginLabels();
   NSSet<NSString *> *signOutLabels = GBSignOutLabels();
+  BOOL paired = GBConnection.shared.deviceToken.length > 0;
   for (UIView *child in [view.subviews copy]) {
-    if (child.tag == 731988 && (!GBConnection.shared.deviceToken.length || ![signOutLabels containsObject:label]))
+    if (child.tag == 731988 && (!paired || ![signOutLabels containsObject:label] || !GBIsSettingsSignOutContext(view)))
       [child removeFromSuperview];
     if (child.tag == 731989 && ![@[@"用量", @"Usage"] containsObject:label])
       [child removeFromSuperview];
-    if (child.tag == 731991 && ![primaryLogin containsObject:label] && ![secondaryLogin containsObject:label] && ![@[@"调试", @"Debug", @"link"] containsObject:label])
+    if (child.tag == 731991 &&
+        (paired || (![primaryLogin containsObject:label] && ![secondaryLogin containsObject:label] &&
+                    ![@[@"调试", @"Debug"] containsObject:label]))) {
       [child removeFromSuperview];
+      GBClearHostSettingsIdentifier(view);
+    }
     if (child.tag == 731992 && ![@[@"资料库", @"Library"] containsObject:label])
       [child removeFromSuperview];
     if (child.tag == 731993 && ![label isEqual:@"dev-gateway@localhost"] &&
@@ -200,8 +273,9 @@ static BOOL GBIsPluginTag(NSInteger tag) {
     return;
   Class fabricViewClass = NSClassFromString(@"RCTViewComponentView");
   BOOL isFabricView = fabricViewClass && [view isKindOfClass:fabricViewClass];
-  if (isFabricView && GBConnection.shared.deviceToken.length && [signOutLabels containsObject:label] &&
-      view.bounds.size.width >= 60 && view.bounds.size.height >= 36) {
+  if (isFabricView && paired && [signOutLabels containsObject:label] &&
+      view.bounds.size.width >= 60 && view.bounds.size.height >= 36 &&
+      GBIsSettingsSignOutContext(view)) {
     UIButton *existing = (UIButton *)[view viewWithTag:731988];
     if (existing) {
       existing.frame = view.bounds;
@@ -220,14 +294,19 @@ static BOOL GBIsPluginTag(NSInteger tag) {
     }
     return;
   }
-  if (isFabricView && [primaryLogin containsObject:label] && view.bounds.size.width >= 160 &&
+  if (isFabricView && !paired && [primaryLogin containsObject:label] && view.bounds.size.width >= 160 &&
       view.bounds.size.height >= 40) {
+    if (GBHasAncestorPluginTag(view, 731991))
+      return;
+    BOOL useStyled = !GBSubtreeHasStyledHostButton(view.window, view);
     view.accessibilityIdentifier = @"grokbot.host.settings";
-    [self installHostButtonOn:view styled:YES];
+    [self installHostButtonOn:view styled:useStyled];
     return;
   }
-  if (isFabricView && [secondaryLogin containsObject:label] && view.bounds.size.width >= 160 &&
+  if (isFabricView && !paired && [secondaryLogin containsObject:label] && view.bounds.size.width >= 160 &&
       view.bounds.size.height >= 40) {
+    if (GBHasAncestorPluginTag(view, 731991))
+      return;
     view.accessibilityIdentifier = @"grokbot.host.settings";
     [self installHostButtonOn:view styled:NO];
     return;
@@ -248,20 +327,23 @@ static BOOL GBIsPluginTag(NSInteger tag) {
     }
     return;
   }
-  if (!GBConnection.shared.deviceToken.length &&
+  if (!paired &&
       [@[@"调试", @"Debug"] containsObject:label] && view.bounds.size.width > 200 &&
       view.bounds.size.height >= 40) {
     // Unpaired full-width Debug entry opens local Host setup.
+    if (GBHasAncestorPluginTag(view, 731991))
+      return;
     view.accessibilityIdentifier = @"grokbot.host.settings";
     [self installHostButtonOn:view styled:NO];
     return;
   }
-  if (([@[@"调试", @"Debug", @"link", @"连接 Host", @"Host Connection"] containsObject:label]) && GBConnection.shared.deviceToken.length && view.bounds.size.width <= 88) {
+  if (([@[@"调试", @"Debug", @"link", @"连接 Host", @"Host Connection"] containsObject:label]) && paired && view.bounds.size.width <= 88) {
     // Keep the original toolbar and link icon; only route the original touch.
     view.accessibilityLabel = GBL(@"连接 Host", @"Host Connection");
     view.accessibilityIdentifier = @"grokbot.host.settings";
     return;
   }
+  GBClearHostSettingsIdentifier(view);
   if ([@[@"资料库", @"Library"] containsObject:label] && GBConnection.shared.deviceToken.length &&
       view.bounds.size.width > 20) {
     if (![view viewWithTag:731992]) {
@@ -311,6 +393,7 @@ static void GBLayout(id self, SEL selector) {
 static void GBRecycle(id self, SEL selector) {
   GBResetProfileView(self);
   GBResetPushView(self);
+  GBClearHostSettingsIdentifier(self);
   for (UIView *child in [[self subviews] copy])
     if (GBIsPluginTag(child.tag))
       [child removeFromSuperview];

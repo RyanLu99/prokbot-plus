@@ -77,6 +77,23 @@ class ReleaseOutput(unittest.TestCase):
             extensions.EXTENSIONS_BY_RELEASE[('1.26.0', '29388')]['Widgets.appex'][1],
             extensions.EXTENSIONS_BY_RELEASE[('1.16.0', '23152')]['Widgets.appex'][1],
         )
+        # Unknown releases must fail closed rather than defaulting widget scheme count to 1.
+        with self.assertRaisesRegex(ValueError, 'Unsupported release for extensions'):
+            extensions.prepare_extensions(self.root, 'dev.example.app', 'group.dev.example.app', lambda _b: [], release=('9.9.9', '99999'))
+        # Duplicate (version, build) manifests must be rejected by load_manifests().
+        dup_pkg = self.root / 'dup-package'
+        dup_patcher = dup_pkg / 'release' / PATCHER.name
+        dup_patcher.parent.mkdir(parents=True)
+        for name in (PATCHER.name, 'bytepatch.py', 'native_text.py'):
+            shutil.copyfile(PATCHER.with_name(name), dup_patcher.with_name(name))
+        dup_primary = dup_pkg / 'recipes' / 'ios' / 'manifest.json'
+        dup_fallback = dup_pkg / 'recipes' / 'ios' / 'dup' / 'manifest.json'
+        dup_fallback.parent.mkdir(parents=True)
+        pins = json.loads(MANIFEST.read_text(encoding='utf-8'))
+        dup_primary.write_text(json.dumps(pins), encoding='utf-8')
+        dup_fallback.write_text(json.dumps(pins), encoding='utf-8')
+        self.app_metadata(pins['version'], pins['build'])
+        self.refused('Duplicate fixed iOS release', dup_patcher)
 
     def test_metadata_gate_and_help_follow_the_packaged_manifest(self):
         # Copy only the release scripts and manifest into an isolated package. No working

@@ -94,9 +94,10 @@ def prepare_extensions(app, bundle_id, group, commands, release=None):
         if name == 'Widgets.appex':
             # Original GrokBotActionURL builds a seven-character Swift string.
             # Keep its ABI/length and change only the four MOV-wide immediates.
-            expected_sites = WIDGETS_SCHEME_COUNTS_BY_RELEASE.get(
-                tuple(release) if release is not None else ('1.27.0', '29519'), 1
-            )
+            release_key = tuple(release) if release is not None else ('1.27.0', '29519')
+            if release_key not in WIDGETS_SCHEME_COUNTS_BY_RELEASE:
+                raise ValueError('Unsupported release for widget scheme patching: ' + repr(release_key))
+            expected_sites = WIDGETS_SCHEME_COUNTS_BY_RELEASE[release_key]
             offsets = scheme_sites(data, start, length)
             if len(offsets) != expected_sites:
                 raise ValueError(
@@ -116,6 +117,12 @@ def prepare_extensions(app, bundle_id, group, commands, release=None):
         path.write_bytes(data)
         info['CFBundleIdentifier'] = bundle_id + '.' + suffix
         info['SandAppGroupIdentifier'] = group
+        if isinstance(info.get('GrokAppProtection'), dict):
+            info['GrokAppProtection'] = {
+                **info['GrokAppProtection'],
+                'appGroupIdentifiers': [group],
+                'keychainAccessGroups': [],
+            }
         info.pop('UISupportedDevices', None)
         (extension / 'Info.plist').write_bytes(plistlib.dumps(info))
         records.append({'name': name, 'bundleId': info['CFBundleIdentifier'],

@@ -33,15 +33,31 @@ class PairingCredentialsTests(unittest.TestCase):
             Path(__file__).resolve().parents[1] / "clients" / "ios" / "GBAppIntents.m"
         ).read_text(encoding="utf-8")
         self.assertIn("GBSignOutLabels", bootstrap)
+        self.assertIn("GBIsSettingsSignOutContext", bootstrap)
+        self.assertIn("GBClearHostSettingsIdentifier", bootstrap)
+        self.assertIn("GBHasAncestorPluginTag", bootstrap)
+        self.assertIn("GBSubtreeHasStyledHostButton", bootstrap)
         self.assertIn("confirmSignOut", bootstrap)
         self.assertIn("[GBConnection.shared disconnect]", bootstrap)
         self.assertIn("GBPrimaryLoginLabels", bootstrap)
         self.assertIn("GBSecondaryLoginLabels", bootstrap)
-        self.assertIn("installHostButtonOn:view styled:YES", bootstrap)
+        self.assertIn("isFabricView && !paired && [primaryLogin containsObject:label]", bootstrap)
+        self.assertIn("isFabricView && !paired && [secondaryLogin containsObject:label]", bootstrap)
         self.assertIn('NSClassFromString(@"RCTViewComponentView")', bootstrap)
         self.assertIn('@"Sign in with Apple"', bootstrap)
         self.assertIn('@"退出登录"', bootstrap)
+        self.assertIn('GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",\n                                @"grok-bot", defaultGroup);', app_intents)
         self.assertIn('GBDeleteAppIntentCredential(@"app:no-auth",\n                                @"sand.cursor-tokens", nil);', app_intents)
+        connectors = (
+            Path(__file__).resolve().parents[1] / "clients" / "ios" / "GBConnectors.m"
+        ).read_text(encoding="utf-8")
+        diagnostics = (
+            Path(__file__).resolve().parents[1] / "clients" / "ios" / "GBDiagnostics.m"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("GBInstallSessionConfigurationProvider", connectors)
+        self.assertIn("sessionWithConfiguration:delegate:delegateQueue:", connectors)
+        self.assertIn("GBResolveReactSymbol", diagnostics)
+        self.assertIn('@"RCTFatalException"', diagnostics)
 
 
 if __name__ == "__main__":

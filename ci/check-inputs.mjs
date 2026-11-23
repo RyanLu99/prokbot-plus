@@ -102,12 +102,16 @@ await checkRecipes('ios/recipes/ios', ios.resources, 'patch', ios.hbcSha256);
 const iosDylibSha = await sha('ios/bin/GrokBotLocal.dylib');
 assert.equal(iosDylibSha, ios.dylibSha256, 'iOS injected library digest mismatch');
 const iosFallback = [];
+const iosSeen = new Set([`${ios.version} (${ios.build})`]);
 for (const entry of (await readdir(join(root, 'ios/recipes/ios'), { withFileTypes: true })).sort((a, b) => b.name.localeCompare(a.name))) {
   if (!entry.isDirectory()) continue;
   const dir = `ios/recipes/ios/${entry.name}`;
   const fallback = await json(`${dir}/manifest.json`);
+  const key = `${fallback.version} (${fallback.build})`;
+  assert.ok(!iosSeen.has(key), `${dir}: duplicate iOS release ${key}`);
+  iosSeen.add(key);
   await checkRecipes(dir, fallback.resources, 'patch', fallback.hbcSha256);
   assert.equal(iosDylibSha, fallback.dylibSha256, `${dir}: iOS injected library digest mismatch`);
-  iosFallback.push(`${fallback.version} (${fallback.build})`);
+  iosFallback.push(key);
 }
 console.log(JSON.stringify({ ...versions, androidShell: `${shell.versionName} (${shell.versionCode})`, androidRenderer: [android.desktopVersion, ...(android.fallback ?? []).map(item => item.desktopVersion)].join(', '), ios: `${ios.version} (${ios.build})`, ...(iosFallback.length ? { iosFallback } : {}) }, null, 2));

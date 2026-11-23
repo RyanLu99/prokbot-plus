@@ -36,6 +36,7 @@ import { provisionTeachSkill } from '../runtime/host-teach.mjs';
 import { PromptSettings } from './prompt-settings.mjs';
 import { internalHostClient } from './internal-host.mjs';
 import { mobileAppIntentMethods, mobileAppIntentRpc } from './mobile-app-intents.mjs';
+import { mobileCompatRpc, mobileCompatRpcMethods } from './mobile-rpc-compat.mjs';
 import { adminExtensions } from './admin-extensions.mjs';
 import { recentRouting } from '../runtime/routing-log.mjs';
 import { todayUsage } from "../runtime/usage-ledger.mjs";
@@ -670,7 +671,13 @@ export async function createSelfHostServer(options = {}) {
     }
     if (path.startsWith("/local/mobile-rpc/")) {
       const found = device(request), method = path.slice("/local/mobile-rpc/".length);
-      check(request.method === "POST" && mobileConnectorMethods.has(method), 404, "连接应用接口不存在");
+      check(request.method === "POST", 404, "连接应用接口不存在");
+      if (mobileCompatRpcMethods.has(method)) {
+        await jsonBody(request, 512 * 1024, { allowEmpty: true });
+        const result = mobileCompatRpc(method);
+        return sendJson(response, result.status, result.body);
+      }
+      check(mobileConnectorMethods.has(method), 404, "连接应用接口不存在");
       return sendJson(response, 200, await connectors.mobile(method,
         // The original client omits the body for parameterless RPC methods.
         await jsonBody(request, 512 * 1024, { allowEmpty: true }), origin, { kind: "device", id: found.id }));

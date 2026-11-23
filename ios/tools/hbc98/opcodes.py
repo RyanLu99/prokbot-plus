@@ -1,4 +1,12 @@
-"""Opcode metadata for Hermes bytecode v98."""
+"""Opcode metadata for Hermes bytecode v98.
+
+The checked-in ``opcodes-v98.json`` table derives its 219 opcode names,
+ordering, and operand widths (``Reg8``, ``UInt16``, ``Addr32``, etc.) from
+Meta's ``facebook/hermes`` (``include/hermes/BCGen/HBC/BytecodeList.def``,
+bytecode version 98, MIT License) using the JSON mapping format popularized
+by ``hbctool`` (MIT License). See ``ios/THIRD_PARTY/facebook__hermes/LICENSE``
+and ``ios/THIRD_PARTY/hbctool/LICENSE``.
+"""
 
 from __future__ import annotations
 

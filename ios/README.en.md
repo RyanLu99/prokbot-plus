@@ -31,8 +31,9 @@ The patch keeps the Widgets, Share and NotificationService extensions. Configure
 | NotificationService | `<main ID>.NotificationService` |
 
 - All four targets use the same App Group, `group.<main ID>` by default. Set another one with `--app-group`.
-- The shared keychain group is `<AppIdentifierPrefix>.<main ID>.shared`. Add it to the signing entitlements of all four targets, and set each target's Info.plist `SandKeychainAccessGroups` to an array containing it.
-- The generated `extension-signing.json` lists this configuration.
+- The shared keychain group is `<AppIdentifierPrefix>.<main ID>.shared`. Add it to the signing entitlements of all four targets, and set each target's Info.plist `SandKeychainAccessGroups` to an array containing it. If the main app or any extension Info.plist contains a `GrokAppProtection` dictionary, update its `appGroupIdentifiers` and `keychainAccessGroups` as well (`patch-app.py` and `extensions.py` isolate both automatically).
+- The generated `extension-signing.json` lists this configuration (including the `GrokAppProtection` requirement).
+- When extensions are kept but a provisioning profile omits the requested App Group, `signing.py` prints a clear warning and omits that entitlement (widgets, share and notification extensions may not share state with the main app).
 - An app signed with the APNs entitlement uses APNs, with credentials configured in the Host. Otherwise, enter a Bark URL in the app's notification settings.
 
 ## License and support

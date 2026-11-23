@@ -7,72 +7,7 @@
 #import "GBAppIntents.h"
 #import "GBSharing.h"
 #import "GBDiagnostics.h"
-#import <dlfcn.h>
-#import <mach-o/dyld.h>
 #import <objc/runtime.h>
-#import <string.h>
-
-// RN can install a process-wide configuration provider which bypasses the
-// default/ephemeral class methods swizzled below. Re-install a provider that
-// starts from the swizzled default configuration so local URLProtocols remain
-// active for the 1.26 networking stack.
-typedef NSURLSessionConfiguration *(^GBSessionConfigurationProvider)(void);
-typedef void (*GBSetSessionConfigurationProvider)(GBSessionConfigurationProvider);
-static GBSetSessionConfigurationProvider GBSetCustomSessionProvider;
-
-static NSURLSessionConfiguration *GBProvidedSessionConfiguration(void) {
-  return [NSURLSessionConfiguration defaultSessionConfiguration];
-}
-
-static void GBInstallSessionConfigurationProvider(void) {
-  if (!GBSetCustomSessionProvider) {
-    GBSetCustomSessionProvider =
-        (GBSetSessionConfigurationProvider)dlsym(
-            RTLD_DEFAULT, "RCTSetCustomNSURLSessionConfigurationProvider");
-  }
-  // Framework symbols are not guaranteed to be in RTLD_DEFAULT on iOS.
-  // Resolve the already-loaded React image explicitly before giving up.
-  if (!GBSetCustomSessionProvider) {
-    const char *classImage = class_getImageName(NSClassFromString(@"RCTHTTPRequestHandler"));
-    if (classImage) {
-      void *image = dlopen(classImage, RTLD_LAZY | RTLD_NOLOAD);
-      if (!image) image = dlopen(classImage, RTLD_LAZY);
-      if (image) {
-        GBSetCustomSessionProvider =
-            (GBSetSessionConfigurationProvider)dlsym(
-                image, "RCTSetCustomNSURLSessionConfigurationProvider");
-      }
-      GBDiagnosticsEvent(@"rn.provider.resolve", @{
-        @"classImage": [NSString stringWithUTF8String:classImage],
-        @"symbolFound": @(GBSetCustomSessionProvider != NULL),
-      });
-    }
-  }
-  if (!GBSetCustomSessionProvider) {
-    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
-      const char *path = _dyld_get_image_name(i);
-      if (!path || !strstr(path, "/React.framework/React")) continue;
-      void *image = dlopen(path, RTLD_LAZY | RTLD_NOLOAD);
-      if (image) {
-        GBSetCustomSessionProvider =
-            (GBSetSessionConfigurationProvider)dlsym(
-                image, "RCTSetCustomNSURLSessionConfigurationProvider");
-        dlclose(image);
-      }
-      if (GBSetCustomSessionProvider) break;
-    }
-  }
-  if (!GBSetCustomSessionProvider) {
-    GBDiagnosticsEvent(@"rn.provider.unavailable", @{
-      @"loadedImages": @(_dyld_image_count()),
-    });
-    return;
-  }
-  GBSetCustomSessionProvider(^{
-    return GBProvidedSessionConfiguration();
-  });
-  GBDiagnosticsEvent(@"rn.provider.installed", @{});
-}
 
 static NSSet *GBConnectorMethods(void) {
   static NSSet *methods; static dispatch_once_t once;
@@ -152,8 +87,9 @@ static NSData *GBLocalPreferenceResponse(NSURLRequest *request) {
 }
 - (void)stopLoading { self.cancelled = YES; [self.task cancel]; }
 @end
-static IMP GBDefaultConfig, GBEphemeralConfig;
+static IMP GBDefaultConfig, GBEphemeralConfig, GBSessionWithConfig, GBSessionWithConfigDelegate;
 static NSURLSessionConfiguration *GBAddProtocol(NSURLSessionConfiguration *config) {
+  if (!config) return nil;
   NSMutableArray *classes = [config.protocolClasses mutableCopy] ?: [NSMutableArray new];
   if (![classes containsObject:GBConnectorProtocol.class]) [classes insertObject:GBConnectorProtocol.class atIndex:0];
   if (![classes containsObject:GBPrivacyProtocolClass()]) [classes insertObject:GBPrivacyProtocolClass() atIndex:0];
@@ -163,8 +99,20 @@ static NSURLSessionConfiguration *GBAddProtocol(NSURLSessionConfiguration *confi
   if (![classes containsObject:GBSharingProtocolClass()]) [classes insertObject:GBSharingProtocolClass() atIndex:0];
   config.protocolClasses = classes; return config;
 }
-static id GBDefault(id self,SEL selector) { return GBAddProtocol(((id(*)(id,SEL))GBDefaultConfig)(self,selector)); }
-static id GBEphemeral(id self,SEL selector) { return GBAddProtocol(((id(*)(id,SEL))GBEphemeralConfig)(self,selector)); }
+static id GBDefault(id self, SEL selector) { return GBAddProtocol(((id(*)(id,SEL))GBDefaultConfig)(self,selector)); }
+static id GBEphemeral(id self, SEL selector) { return GBAddProtocol(((id(*)(id,SEL))GBEphemeralConfig)(self,selector)); }
+// Swizzle NSURLSession factory methods instead of replacing RN's process-wide
+// RCTSetCustomNSURLSessionConfigurationProvider, so any custom configuration
+// provider installed by the app keeps its headers, caching, and protocols while
+// our local NSURLProtocols stay prepended on a copy of the configuration.
+static id GBSession(id self, SEL selector, NSURLSessionConfiguration *config) {
+  NSURLSessionConfiguration *patched = config ? GBAddProtocol([config copy]) : nil;
+  return ((id(*)(id,SEL,id))GBSessionWithConfig)(self, selector, patched);
+}
+static id GBSessionDelegate(id self, SEL selector, NSURLSessionConfiguration *config, id delegate, NSOperationQueue *queue) {
+  NSURLSessionConfiguration *patched = config ? GBAddProtocol([config copy]) : nil;
+  return ((id(*)(id,SEL,id,id,id))GBSessionWithConfigDelegate)(self, selector, patched, delegate, queue);
+}
 void GBInstallConnectorTransport(void) {
   static dispatch_once_t once;
   dispatch_once(&once, ^{
@@ -176,8 +124,11 @@ void GBInstallConnectorTransport(void) {
     [NSURLProtocol registerClass:GBSharingProtocolClass()];
     Method a=class_getClassMethod(NSURLSessionConfiguration.class,@selector(defaultSessionConfiguration));
     Method b=class_getClassMethod(NSURLSessionConfiguration.class,@selector(ephemeralSessionConfiguration));
+    Method c=class_getClassMethod(NSURLSession.class,@selector(sessionWithConfiguration:));
+    Method d=class_getClassMethod(NSURLSession.class,@selector(sessionWithConfiguration:delegate:delegateQueue:));
     GBDefaultConfig=method_setImplementation(a,(IMP)GBDefault);
     GBEphemeralConfig=method_setImplementation(b,(IMP)GBEphemeral);
+    if (c) GBSessionWithConfig=method_setImplementation(c,(IMP)GBSession);
+    if (d) GBSessionWithConfigDelegate=method_setImplementation(d,(IMP)GBSessionDelegate);
   });
-  GBInstallSessionConfigurationProvider();
 }

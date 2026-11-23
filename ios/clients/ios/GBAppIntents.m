@@ -93,6 +93,8 @@ void GBSyncAppIntentCredentials(void) {
   NSString *sharedGroup = GBAppIntentSharedAccessGroup();
   if (!connection.serverURL.length || !connection.deviceToken.length) {
     GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",
+                                @"grok-bot", defaultGroup);
+    GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",
                                 @"grok-bot", sharedGroup);
     GBDeleteAppIntentCredential(@"x.money.agent-connection-code:no-auth",
                                 @"grok-bot", nil);

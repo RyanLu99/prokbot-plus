@@ -100,12 +100,15 @@ def remove_signature(path):
 def pinned_releases():
     primary=json.loads((ROOT/'recipes/ios/manifest.json').read_text(encoding='utf-8'))
     releases=[(primary['version'],primary['build'])]
+    seen={releases[0]}
     recipes_root=ROOT/'recipes/ios'
     for child in sorted(recipes_root.iterdir(),reverse=True):
         manifest=child/'manifest.json'
         if child.is_dir() and manifest.is_file():
             pin=json.loads(manifest.read_text(encoding='utf-8'))
-            releases.append((pin['version'],pin['build']))
+            pair=(pin['version'],pin['build'])
+            if pair in seen:raise ValueError(f'Duplicate pinned iOS release: {pair[0]} ({pair[1]})')
+            seen.add(pair);releases.append(pair)
     return releases
 
 def main():
@@ -184,6 +187,8 @@ def main():
             'sharedKeychainGroup':'<AppIdentifierPrefix>.'+a.bundle_id+'.shared',
             'infoPlistSharedKeychainKey':'SandKeychainAccessGroups',
             'infoPlistSharedKeychainTargets':['main',*[row['name'] for row in extensions]],
+            'infoPlistAppProtectionKey':'GrokAppProtection',
+            'infoPlistAppProtectionNote':'If present in main or extension Info.plist, set appGroupIdentifiers to [appGroup] and keychainAccessGroups to the target signing keychain-access-groups.',
             'profileRequiredForEveryBundle':True},indent=2)+'\n')
     ipa=None
     if not a.app_only:

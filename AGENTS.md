@@ -48,7 +48,9 @@ node web/patchers/patch.mjs                # 生成网页版界面包，输出 w
 python web/tests/browser-flows.py <界面包>  # 网页版浏览器测试：8 种设备尺寸，需要 Playwright
 node android/shell/release-shell.mjs       # 改了 android/shell/ 后重建预编译外壳并更新摘要（需要 JDK 17+ 和 Android SDK）
 python3 host/release/build-docker.py       # 在 Linux 上构建服务端镜像 grokbot-host:local
-python3 ios/tests/ios-network.test.py      # iOS 网络层 1 项，只能在装了 Xcode 命令行工具的 Mac 上运行
+python3 -B -m unittest discover -s ios/tools/hbc98/tests  # iOS HBC 98 解析与补丁生成单测（在仓库根目录运行）
+python3 ios/tests/ios-release.test.py && python3 ios/tests/ios-signing.test.py && python3 ios/tests/ios-pairing-credentials.test.py && python3 ios/tests/ios-app-intents-source.test.py && python3 ios/tests/ios-pages-rpc.test.py  # iOS 离线单测
+python3 ios/tests/ios-network.test.py && python3 ios/tests/ios-auto-review-preferences.test.py  # iOS 网络与自动审查原生单测（需装有 Xcode 命令行工具的 Mac）
 ```
 
 **提交前五套测试（host、windows、mac、android、web）必须全部通过。**改了 `android/client/` 或 `web/`，再用 1.1.0 和 0.71.2 两种界面包各跑一次 `web/tests/browser-flows.py`。改了 Host 运行时代码，要重建镜像后才会生效。改了 `android/shell/` 要重建预编译外壳，否则补丁工具会因摘要不符拒绝运行。

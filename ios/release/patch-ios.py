@@ -51,10 +51,14 @@ def load_manifests():
         manifest_file = child / 'manifest.json'
         if child.is_dir() and manifest_file.is_file():
             entries.append((child, json.loads(manifest_file.read_text(encoding='utf-8'))))
+    seen = set()
     for _, manifest in entries:
         version, build = manifest.get('version'), manifest.get('build')
         if not all(isinstance(pin, str) and pin for pin in (version, build)):
             raise ValueError('Invalid fixed iOS version or build')
+        if (version, build) in seen:
+            raise ValueError(f'Duplicate fixed iOS release: {version} ({build})')
+        seen.add((version, build))
     return entries
 
 

@@ -140,15 +140,39 @@ void GBDiagnosticsRecordBundle(NSURL *requested, NSURL *loaded) {
   if (getenv("GROKBOT_VALIDATE_CAPTURE"))
     GBLoadedBundle = @{@"requested":GBBundleDescription(requested), @"loaded":GBBundleDescription(loaded)};
 }
+static void *GBResolveReactSymbol(const char *symbolName) {
+  void *sym = dlsym(RTLD_DEFAULT, symbolName);
+  if (sym) return sym;
+  const char *classImage = class_getImageName(NSClassFromString(@"RCTExceptionsManager"));
+  if (classImage) {
+    void *image = dlopen(classImage, RTLD_LAZY | RTLD_NOLOAD);
+    if (image) {
+      sym = dlsym(image, symbolName);
+      dlclose(image);
+      if (sym) return sym;
+    }
+  }
+  for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+    const char *path = _dyld_get_image_name(i);
+    if (!path || !strstr(path, "/React.framework/React")) continue;
+    void *image = dlopen(path, RTLD_LAZY | RTLD_NOLOAD);
+    if (image) {
+      sym = dlsym(image, symbolName);
+      dlclose(image);
+      if (sym) return sym;
+    }
+  }
+  return NULL;
+}
 __attribute__((constructor)) static void GBInstallDiagnostics(void) {
   if (!getenv("GROKBOT_VALIDATE_CAPTURE"))
     return;
   typedef void (*GBSetFatalHandler)(GBRCTFatalHandler);
   typedef GBRCTFatalHandler (*GBGetFatalHandler)(void);
   GBSetFatalHandler setFatalHandler =
-      (GBSetFatalHandler)dlsym(RTLD_DEFAULT, "RCTSetFatalHandler");
+      (GBSetFatalHandler)GBResolveReactSymbol("RCTSetFatalHandler");
   GBGetFatalHandler getFatalHandler =
-      (GBGetFatalHandler)dlsym(RTLD_DEFAULT, "RCTGetFatalHandler");
+      (GBGetFatalHandler)GBResolveReactSymbol("RCTGetFatalHandler");
   if (setFatalHandler) {
     GBPreviousFatalHandler = getFatalHandler ? getFatalHandler() : nil;
     setFatalHandler(^(NSError *error) {
@@ -157,7 +181,15 @@ __attribute__((constructor)) static void GBInstallDiagnostics(void) {
         @"code": @(error.code),
         @"reason": error.localizedDescription ?: @""
       });
-      if (GBPreviousFatalHandler) GBPreviousFatalHandler(error);
+      if (GBPreviousFatalHandler) {
+        GBPreviousFatalHandler(error);
+      } else {
+        // Match React Native's default fatal handler by raising an NSException
+        // instead of swallowing the fatal error during validation runs.
+        [NSException raise:@"RCTFatalException"
+                    format:@"Unhandled React Native fatal error: %@",
+                           error.localizedDescription ?: @"(unknown)"];
+      }
     });
   }
   Class exceptions = NSClassFromString(@"RCTExceptionsManager");
