@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -8,6 +9,49 @@ import inputs from '../recipes/host/manifest.json' with { type: 'json' };
 
 const sourceSha256 = inputs.sourceSha256['agent-isolation/agent-store-worker.cjs'];
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+export const DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES = 32 * 1024 * 1024;
+
+export function blobQuickCheckMaxBytes(env = process.env) {
+  const raw = env?.GROKBOT_BLOB_DB_QUICK_CHECK_MAX_BYTES?.trim();
+  if (!raw) return DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES;
+  if (raw.toLowerCase() === 'infinity') return Number.POSITIVE_INFINITY;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_BLOB_QUICK_CHECK_MAX_BYTES;
+}
+
+/** Avoid blocking worker init for 60s+ on PRAGMA quick_check for multi-hundred-MB blob DBs. */
+export function wrapOpenConversationBlobDb(
+  originalOpen,
+  bindings,
+  { maxQuickCheckBytes = blobQuickCheckMaxBytes(), stat = statSync } = {},
+) {
+  return function openConversationBlobDbWithLargeDbFastPath(options) {
+    if (!options?.dbPath || maxQuickCheckBytes === Number.POSITIVE_INFINITY) {
+      return originalOpen(options);
+    }
+    let size = 0;
+    try {
+      size = stat(options.dbPath).size;
+    } catch {
+      return originalOpen(options);
+    }
+    if (size < maxQuickCheckBytes) return originalOpen(options);
+    let db;
+    try {
+      const recovery = options.recovery ?? bindings.DISK_RECOVERY;
+      if (bindings.findPendingRecovery(options.dbPath, recovery) != null) {
+        return originalOpen(options);
+      }
+      db = bindings.openConfiguredConversationBlobDb(options.dbPath, options.busyTimeoutMs);
+      db.prepare('PRAGMA schema_version').get();
+      db.prepare('SELECT id FROM blobs LIMIT 1').get();
+      return db;
+    } catch {
+      try { db?.close(); } catch {}
+      return originalOpen(options);
+    }
+  };
+}
 
 export async function describeRecoveredBlobWorker(state) {
   const provenance = JSON.parse(await readFile(join(state, 'blob-worker-library-provenance.json'), 'utf8'));
@@ -32,8 +76,17 @@ export async function describeRecoveredBlobWorker(state) {
 export async function loadRecoveredBlobWorker(state) {
   const status = await describeRecoveredBlobWorker(state);
   const library = createRequire(import.meta.url)(join(state, 'blob-worker-library.cjs'));
-  const constructed = await constructRecoveredModules(library.blobWorkerRecoveryPlan,
-    library.getBlobWorkerRecoveryBindings(), join(state, 'recovered-core/stable'), 'Blob worker');
+  const constructed = await constructRecoveredModules(
+    library.blobWorkerRecoveryPlan,
+    library.getBlobWorkerRecoveryBindings(),
+    join(state, 'recovered-core/stable'),
+    'Blob worker',
+    {
+      overrides: {
+        openConversationBlobDb: (originalOpen, bindings) => wrapOpenConversationBlobDb(originalOpen, bindings),
+      },
+    },
+  );
   library.installRecoveredBlobWorker(constructed.bindings);
   return { library, status: { ...status, installed: true } };
 }
