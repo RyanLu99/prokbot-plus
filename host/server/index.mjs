@@ -36,6 +36,7 @@ import { provisionTeachSkill } from '../runtime/host-teach.mjs';
 import { PromptSettings } from './prompt-settings.mjs';
 import { internalHostClient } from './internal-host.mjs';
 import { mobileAppIntentMethods, mobileAppIntentRpc } from './mobile-app-intents.mjs';
+import { clientCompatMethods, handleClientCompatRpc } from './client-compat-api.mjs';
 import { adminExtensions } from './admin-extensions.mjs';
 import { recentRouting } from '../runtime/routing-log.mjs';
 import { todayUsage } from "../runtime/usage-ledger.mjs";
@@ -826,6 +827,11 @@ export async function createSelfHostServer(options = {}) {
       if (connectorApiMethods.has(path.slice("/api/".length)))
         return sendJson(response, 200, await connectors.original(path.slice("/api/".length),
           await jsonBody(request, 512 * 1024), origin, { kind: "device", id: found.id }));
+      if (clientCompatMethods.has(path.slice("/api/".length))) {
+        const method = path.slice("/api/".length);
+        const input = await jsonBody(request, 128 * 1024, { allowEmpty: true });
+        return sendJson(response, 200, await handleClientCompatRpc(method, input, internalHostClient(hostUrl, internalToken)));
+      }
       if (path === "/api/deleteAgents")
         return deleteAgentsWithLibrary(request, response, {
           hostUrl,
