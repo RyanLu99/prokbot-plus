@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import { applyByteRecipe } from '../../mac/patchers/desktop/release-recipes.mjs';
@@ -44,7 +45,8 @@ test('every extension source is carried verbatim by a recipe', async () => {
       ['mac-x64', new URL('../../mac/patchers/desktop/x64/', import.meta.url)],
       ['linux-x64', new URL('../../linux/patchers/desktop/', import.meta.url)],
       ['linux-arm64', new URL('../../linux/patchers/desktop/arm64/', import.meta.url)],
-    ].map(async ([label, dir]) => {
+    // The Windows, Android and web packages ship without linux/.
+    ].filter(([, dir]) => existsSync(new URL('recipes/manifest.json', dir))).map(async ([label, dir]) => {
       const m = JSON.parse(await readFile(new URL('recipes/manifest.json', dir), 'utf8'));
       const list = await Promise.all(m.files.map(async entry => ({
         entry, recipe: JSON.parse(gunzipSync(await readFile(new URL(`recipes/${entry.recipe}`, dir)))),

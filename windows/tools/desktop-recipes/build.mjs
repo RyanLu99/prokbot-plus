@@ -20,7 +20,6 @@ import path from 'node:path';
 import { acquireDesktopSource } from '../../../mac/patchers/desktop/download-original.mjs';
 import { applyByteRecipe } from '../../../mac/patchers/desktop/release-recipes.mjs';
 import { unpackOriginal } from '../../patchers/desktop/original.mjs';
-import { unpackOriginal as unpackLinuxOriginal } from '../../../linux/patchers/desktop/deb.mjs';
 import { SPEC, buildSpec } from './spec.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -142,6 +141,8 @@ async function main() {
       }
       asarFile = path.join(app, 'Contents/Resources/app.asar');
     } else if (isLinux) {
+      // Loaded here because the Windows, Android and web packages ship without linux/.
+      const { unpackOriginal: unpackLinuxOriginal } = await import('../../../linux/patchers/desktop/deb.mjs');
       const app = await unpackLinuxOriginal(source, temporary, supported);
       asarFile = path.join(app, 'resources/app.asar');
     } else {
