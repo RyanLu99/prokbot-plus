@@ -20,7 +20,7 @@ node linux/patchers/desktop/patch.mjs
   - `grokbot-local/`: portable directory (run `./grokbot-local` directly);
   - `GrokBotLocal-1.2.3-<arch>-linux.tar.gz`: portable archive for copying to a Linux desktop (skip with `--no-archive`);
   - `GrokBotLocal-1.2.3-<arch>.patch.json`: build verification manifest.
-- `--verify-only` verifies the pinned original and replays the recipes in a temporary directory without writing output. See the [version table](../README.en.md#client-versions) for accepted inputs and the latest official releases.
+- `--verify-only` verifies the pinned original and replays the recipes in a temporary directory without writing output; it also runs on Windows. See the [version table](../README.en.md#client-versions) for accepted inputs and the latest official releases.
 
 ## Install and run
 
@@ -30,7 +30,7 @@ Run `./grokbot-local` directly from the portable folder, or install the desktop 
 sh grokbot-local/install.sh
 ```
 
-Installs to `~/.local/share/grokbot-local` and links `~/.local/bin/grokbot-local` by default (`--dir` and `--bin-dir` override). Uninstall with `sh ~/.local/share/grokbot-local/uninstall.sh` (keeps settings and credentials in `~/.config/Grok Bot Local`).
+Installs to `~/.local/share/grokbot-local` and links `~/.local/bin/grokbot-local` by default (`--dir` and `--bin-dir` override). Uninstall with `sh ~/.local/share/grokbot-local/uninstall.sh` (keeps settings and credentials in `~/.config/Grok Bot Local`). The install script replaces only an empty directory or an earlier Grok Bot Local install, and the uninstall script removes only a Grok Bot Local install; both refuse when `--dir` points anywhere else.
 
 On first launch, enter your Host address and a 6-character pairing code. Turn on the Tailcat switch only when pasting a connection link from the Host admin page's Remote access view; leave it off for LAN or HTTPS addresses.
 
@@ -43,7 +43,8 @@ On first launch, enter your Host address and a 6-character pairing code. Turn on
   ```
   As a temporary fallback without sandboxing, launch with `GROKBOT_NO_SANDBOX=1 grokbot-local`.
 - **Credential storage**: uses the desktop keyring (GNOME Keyring / KWallet) when running; on minimal window managers without a Secret Service daemon, matches the official Linux client by opting into Electron's `basic_text` backend (still stored `0600` inside a `0700` directory).
-- **Capabilities and limits**: supports built-in Tailcat networking, local command and file execution (with approvals), local Codex CLI delegation and desktop notifications; like Windows, local mouse/keyboard GUI control is unavailable. Uses its own profile directory and `grokbot-local://` scheme so it can coexist with the official client.
+- **Capabilities and limits**: supports built-in Tailcat networking, local command and file execution (with approvals), local Codex CLI delegation and desktop notifications; like Windows, local mouse/keyboard GUI control is unavailable. Uses its own profile directory and `grokbot-local://` scheme so it can coexist with the official client. Local commands and Codex need a 1.10.0 or later Host.
+- **Tested so far**: on Ubuntu 22.04 x64 under WSL2 (WSLg): building, launch, pairing, chat, local commands with approval, restoring after a restart, and the install and uninstall scripts. Native GNOME / KDE desktops, Wayland, Tailcat, the tray, ARM64 and the AppArmor script on Ubuntu 24.04 are untested; please open an issue if something breaks.
 
 ## Maintenance and tests
 

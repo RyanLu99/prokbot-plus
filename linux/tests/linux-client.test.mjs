@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -192,6 +192,44 @@ test('Linux launcher, installer and desktop entry only claim grokbot-local:// an
       assert.equal(check.status, 0, `${label} failed sh -n: ${check.stderr}`);
     }
   }
+});
+
+test('install.sh and uninstall.sh replace or remove only a Grok Bot Local install', { skip: process.platform === 'win32' }, async t => {
+  const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'grokbot-linux-install-')));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const source = path.join(root, 'grokbot-local');
+  await mkdir(path.join(source, 'resources'), { recursive: true });
+  for (const [name, body, mode] of [
+    ['grok-bot', '#!/bin/sh\n', 0o755], ['grokbot-local', launcherScript(), 0o755],
+    ['install.sh', installScript(), 0o755], ['uninstall.sh', uninstallScript(), 0o755],
+    ['setup-apparmor.sh', setupAppArmorScript(), 0o755], ['resources/app.asar', '', 0o644],
+    ['resources/grokbot-local.patch.json', '{}', 0o644], ['resources/grokbot-tailcat', '', 0o755],
+  ]) await writeFile(path.join(source, name), body, { mode });
+  const env = { ...process.env, HOME: path.join(root, 'home'), XDG_DATA_HOME: '' };
+  const bin = path.join(root, 'bin');
+  const run = (script, ...args) => spawnSync('sh', [path.join(source, script), ...args], { env, encoding: 'utf8' });
+
+  const foreign = path.join(root, 'documents');
+  await mkdir(foreign);
+  await writeFile(path.join(foreign, 'keep.txt'), 'keep');
+  let result = run('install.sh', '--dir', foreign, '--bin-dir', bin);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /Refusing to replace/);
+  result = run('uninstall.sh', '--dir', foreign, '--bin-dir', bin);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /Refusing to remove/);
+  assert.equal(await readFile(path.join(foreign, 'keep.txt'), 'utf8'), 'keep');
+
+  const target = path.join(root, 'my apps', 'grokbot-local');
+  for (let pass = 0; pass < 2; pass += 1) {
+    result = run('install.sh', '--dir', target, '--bin-dir', bin);
+    assert.equal(result.status, 0, result.stderr);
+  }
+  const entry = await readFile(path.join(root, 'home', '.local', 'share', 'applications', 'grokbot-local.desktop'), 'utf8');
+  assert.ok(entry.includes(`Exec="${target}/grokbot-local" %U`), entry);
+  result = run('uninstall.sh', '--dir', target, '--bin-dir', bin);
+  assert.equal(result.status, 0, result.stderr);
+  await assert.rejects(stat(target), { code: 'ENOENT' });
 });
 
 test('patch.mjs --help prints usage without downloading', () => {

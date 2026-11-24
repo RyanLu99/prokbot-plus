@@ -83,7 +83,7 @@ Grok Bot 是 xAI 的 AI 助手应用。它的 Bot 除了聊天，还有自己的
 | 平台 | 官方最新版 | 本项目需要的版本 |
 | --- | --- | --- |
 | Windows x64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) | **1.2.3**（推荐）；用不了再用 1.1.0、0.71.2 |
-| Linux x64 / ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) | 1.2.3（.deb 原包；已通过构建校验，未在 Linux 桌面真机实测） |
+| Linux x64 / ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) | 1.2.3（.deb 原包；已在 WSL2 的 Ubuntu 22.04 x64 上实测，原生桌面和 ARM64 未实测） |
 | macOS ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) | 1.2.3（未在 Mac 真机上测试） |
 | macOS Intel (x64) | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/darwin-x64/sand) | 1.2.3（已在 Intel Mac 上实测 1.2.3 可用） |
 | iOS | [1.27.0](https://apps.apple.com/us/app/grok-bot/id6794501026) | 1.27.0（构建 29519；已在 iPad 上验证连接、发消息和 App Intent） |
@@ -97,7 +97,7 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 | 客户端 | 系统要求 | 说明 |
 | --- | --- | --- |
 | Windows | Windows 10 / 11 x64 | 本项目新增。便携版或安装包，不需要管理员权限。Bot 可以在你的电脑上执行命令，执行前先问你。已在 Windows 11 上实测。 |
-| Linux | Linux x64 / ARM64 桌面 | 本项目新增。便携目录、`.tar.gz` 与用户级安装脚本，不需要 root 权限。支持 Tailcat、本机命令和 Codex，不支持鼠标键盘图形控制；已通过构建校验，未在 Linux 桌面真机实测。 |
+| Linux | Linux x64 / ARM64 桌面 | 本项目新增。便携目录、`.tar.gz` 与用户级安装脚本，不需要 root 权限。支持 Tailcat、本机命令和 Codex，不支持鼠标键盘图形控制；在 WSL2 的 Ubuntu 22.04 x64 上实测过，原生 Linux 桌面和 ARM64 还没实测。 |
 | Android | Android 9+，系统 WebView 89+ | 本项目自开发的 App，不是官方 Android 版。在 Android 15 / 16 模拟器上测过，未经真机测试。 |
 | 网页版 | 新版 Chrome、Edge、Firefox、Safari | 由你的 Host 提供，手机、平板、电脑自动适配，用配对码登录。只操作 Bot 的电脑，不操作你本机。 |
 | Mac | Apple 芯片或 Intel 芯片 | 支持官方 1.2.3 的 Apple 芯片与 Intel 芯片（Intel 1.2.3 已在 Intel Mac 真机实测可用，Apple 芯片 1.2.3 已通过证书签名构建校验）。 |

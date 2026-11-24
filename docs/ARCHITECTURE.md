@@ -340,7 +340,7 @@ node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> 
 
 - 只支持清单里的固定版本，官方更新后要重新制作补丁；没有自动更新。
 - Windows：Bot 还不能控制鼠标键盘；没有代码签名；只支持 x64；Tailcat 和实时语音没有和真实 Host 联调过。
-- Linux：不支持本机鼠标键盘图形控制；Ubuntu 24.04+ 启用 AppArmor userns 限制时需运行一次 `sudo …/setup-apparmor.sh` 以保留沙箱；1.2.3 x64 / ARM64 已通过构建与安装脚本校验，尚未在真实 Linux 桌面环境联调。
+- Linux：不支持本机鼠标键盘图形控制；Ubuntu 24.04+ 启用 AppArmor userns 限制时需运行一次 `sudo …/setup-apparmor.sh` 以保留沙箱；在 WSL2 的 Ubuntu 22.04 x64（WSLg）上实测了生成、配对、对话、需审批的本机命令、重启恢复和安装卸载脚本；原生 GNOME / KDE、Wayland、Tailcat、托盘、ARM64 和 Ubuntu 24.04 的 AppArmor 脚本还没实测。本机命令和 Codex 需要 1.10.0 及以后的 Host，旧 Host 不接受 `linux` 平台。
 - Android：不支持 Tailcat；排版照官方手机版，但页面内容是桌面版的（设置是「通用 / 电脑 / 更新」等标签页，Bot 的电脑从对话详情打开）；后台通知靠前台服务，部分厂商系统需要允许后台运行；语音只验证到请求送达 Host；只在模拟器上测过。
 - 网页版：只能使用 Host 上的 Bot 电脑；不支持 Tailcat；http 地址下麦克风、语音输入和通知不可用，页面关闭后没有通知；没有在真机浏览器上测试。
 - 原版桌面只有 amd64。单台 ARM 机器同时运行 Host 和模拟桌面的完整部署和性能没有验证。

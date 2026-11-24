@@ -93,7 +93,9 @@ export async function unpackOriginal(source, temporary, supported) {
     const root = path.join(work, 'root');
     await mkdir(root, { recursive: true });
     try {
-      execFileSync('tar', ['-xf', archive, '-C', root], { stdio: ['ignore', 'ignore', 'pipe'] });
+      // Git for Windows puts GNU tar first, which reads a drive path as a remote host; the system tar handles drive paths and xz.
+      const tar = process.platform === 'win32' ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+      execFileSync(tar, ['-xf', archive, '-C', root], { stdio: ['ignore', 'ignore', 'pipe'] });
     } catch (error) {
       const detail = error.stderr ? String(error.stderr).trim() : error.message;
       throw new Error(`无法解压 ${supported.payload.name}，请确认已安装支持 xz 的 tar（xz-utils）：${detail}`);

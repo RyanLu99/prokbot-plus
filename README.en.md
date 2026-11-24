@@ -83,7 +83,7 @@ You also need a model API with tool calling (and image input, if the Bot should 
 | Platform | Latest official | Version this project needs |
 | --- | --- | --- |
 | Windows x64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/win32-x64-user/sand) | **1.2.3** (recommended); 1.1.0, 0.71.2 if it does not work |
-| Linux x64 / ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) | 1.2.3 (.deb archive; build-verified, not yet tested on a live Linux desktop) |
+| Linux x64 / ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) | 1.2.3 (.deb archive; tested on Ubuntu 22.04 x64 under WSL2; native desktops and ARM64 untested) |
 | macOS ARM64 | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/darwin-arm64/sand) | 1.2.3 (not tested on a Mac) |
 | macOS Intel (x64) | [1.2.3](https://api2.cursor.sh/updates/api/download/stable/darwin-x64/sand) | 1.2.3 (tested working on an Intel Mac with 1.2.3) |
 | iOS | [1.27.0](https://apps.apple.com/us/app/grok-bot/id6794501026) | 1.27.0 (build 29519; pairing, messaging and App Intents verified on an iPad) |
@@ -97,7 +97,7 @@ ProkBot Plus has its own version numbers; see the [latest release](https://githu
 | Client | Requirements | Notes |
 | --- | --- | --- |
 | Windows | Windows 10 / 11 x64 | New in Plus. Portable version or installer, no administrator rights needed. The Bot can run commands on your PC and asks you first. Tested on Windows 11. |
-| Linux | Linux x64 / ARM64 desktop | New in Plus. Portable folder, `.tar.gz` and per-user install script, no root needed. Supports Tailcat, local commands and Codex; no local mouse/keyboard GUI control. Build-verified, not yet tested on a live Linux desktop. |
+| Linux | Linux x64 / ARM64 desktop | New in Plus. Portable folder, `.tar.gz` and per-user install script, no root needed. Supports Tailcat, local commands and Codex; no local mouse/keyboard GUI control. Tested on Ubuntu 22.04 x64 under WSL2; native Linux desktops and ARM64 are untested. |
 | Android | Android 9+, system WebView 89+ | Our own app, not the official Android app. Tested on Android 15 / 16 emulators, not on a real phone. |
 | Web client | Current Chrome, Edge, Firefox or Safari | Served by your Host and adapts to phones, tablets and computers; sign in with a pairing code. It works with the Bot's computer only, never your own device. |
 | Mac | Apple Silicon or Intel | Supports official 1.2.3 on both Apple Silicon and Intel Macs (Intel 1.2.3 live-tested on an Intel Mac; Apple Silicon 1.2.3 built and signature-verified). |

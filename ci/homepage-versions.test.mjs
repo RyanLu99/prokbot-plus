@@ -81,8 +81,8 @@ test('Android names its interface release and fallback; Mac and Linux note a new
     '(recommended; 0.71.2 if it does not work), built once and uploaded to your Host |'));
   assert.ok(zh.includes('| 0.71.2（尚未适配 1.1.0；未在 Mac 真机上测试） |'));
   assert.ok(en.includes('| 0.71.2 (not yet adapted to 1.1.0; not tested on a Mac) |'));
-  assert.ok(zh.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand)（此补丁不支持） | 1.2.3（尚未适配 1.3.0；.deb 原包；已通过构建校验，未在 Linux 桌面真机实测） |'));
-  assert.ok(en.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) (not supported by this patch) | 1.2.3 (not yet adapted to 1.3.0; .deb archive; build-verified, not yet tested on a live Linux desktop) |'));
+  assert.ok(zh.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand)（此补丁不支持） | 1.2.3（尚未适配 1.3.0；.deb 原包；已在 WSL2 的 Ubuntu 22.04 x64 上实测，原生桌面和 ARM64 未实测） |'));
+  assert.ok(en.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) (not supported by this patch) | 1.2.3 (not yet adapted to 1.3.0; .deb archive; tested on Ubuntu 22.04 x64 under WSL2; native desktops and ARM64 untested) |'));
   data.snap.mac.version = '0.71.2';
   assert.ok(render(fixture,'en',data).includes('| 0.71.2 (not tested on a Mac) |'));
 });

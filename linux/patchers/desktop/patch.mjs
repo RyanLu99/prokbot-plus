@@ -35,7 +35,8 @@ if (args.includes('--help')) {
 默认输出到 linux/output/，包含便携目录（grokbot-local/）、便携压缩包（.tar.gz）及用户级安装脚本（install.sh）。`);
   process.exit(0);
 }
-if (process.platform === 'win32') throw new Error('Linux 客户端需要在 Linux 或 macOS 上生成（需要保留 POSIX 文件权限）。');
+// --verify-only writes nothing, so it also runs on Windows; building needs POSIX file modes.
+if (process.platform === 'win32' && !args.includes('--verify-only')) throw new Error('Linux 客户端需要在 Linux 或 macOS 上生成（需要保留 POSIX 文件权限）。');
 
 const startedAt = performance.now();
 const outputRoot = path.resolve(arg('--output') ?? path.join(linuxRoot, 'output'));

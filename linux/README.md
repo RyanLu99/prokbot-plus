@@ -20,7 +20,7 @@ node linux/patchers/desktop/patch.mjs
   - `grokbot-local/`：便携目录，直接运行 `./grokbot-local` 启动；
   - `GrokBotLocal-1.2.3-<arch>-linux.tar.gz`：便于拷到目标 Linux 电脑的便携压缩包（不需要时加 `--no-archive`）；
   - `GrokBotLocal-1.2.3-<arch>.patch.json`：构建校验清单。
-- `--verify-only` 只在临时目录校验原包并回放补丁，不写出客户端。可接受的原包和官方最新版本见[首页版本表](../README.md#client-versions)。
+- `--verify-only` 只在临时目录校验原包并回放补丁，不写出客户端，在 Windows 上也能运行。可接受的原包和官方最新版本见[首页版本表](../README.md#client-versions)。
 
 ## 安装与运行
 
@@ -30,7 +30,7 @@ node linux/patchers/desktop/patch.mjs
 sh grokbot-local/install.sh
 ```
 
-默认安装到 `~/.local/share/grokbot-local`，并在 `~/.local/bin/grokbot-local` 创建启动软链（可用 `--dir`、`--bin-dir` 自定义路径）。卸载运行 `sh ~/.local/share/grokbot-local/uninstall.sh`（不会删除 `~/.config/Grok Bot Local` 中的配置与凭据）。
+默认安装到 `~/.local/share/grokbot-local`，并在 `~/.local/bin/grokbot-local` 创建启动软链（可用 `--dir`、`--bin-dir` 自定义路径）。卸载运行 `sh ~/.local/share/grokbot-local/uninstall.sh`（不会删除 `~/.config/Grok Bot Local` 中的配置与凭据）。安装脚本只会覆盖空目录或之前装的 Grok Bot Local，卸载脚本也只删除 Grok Bot Local 的安装目录，`--dir` 指向其他目录时会拒绝执行。
 
 首次启动填写 Host 地址和 6 位配对码。连接页的 Tailcat 开关只在粘贴 Host 管理页「远程访问」里的连接链接时打开，填局域网或 HTTPS 地址时保持关闭。
 
@@ -43,7 +43,8 @@ sh grokbot-local/install.sh
   ```
   如需临时跳过沙箱启动，可运行 `GROKBOT_NO_SANDBOX=1 grokbot-local`。
 - **凭据存储**：优先使用系统密钥环（GNOME Keyring / KWallet）；无密钥环守护进程时沿用官方 Linux 客户端行为回退到 Electron `basic_text`（凭据文件仍以 `0600` 权限保存在 `0700` 目录）。
-- **本机能力与限制**：支持 Tailcat 内置组网、Bot 在本机执行命令与文件操作（需审批）、委派本机 Codex CLI 与桌面通知；和 Windows 一样不支持本机鼠标键盘图形界面控制。与官方客户端配置目录和协议完全隔离，可共存。
+- **本机能力与限制**：支持 Tailcat 内置组网、Bot 在本机执行命令与文件操作（需审批）、委派本机 Codex CLI 与桌面通知；和 Windows 一样不支持本机鼠标键盘图形界面控制。与官方客户端配置目录和协议完全隔离，可共存。本机命令和 Codex 需要 1.10.0 及以后的 Host。
+- **实测情况**：在 WSL2 的 Ubuntu 22.04 x64（WSLg）上实测了生成、启动、配对、对话、需审批的本机命令、重启后恢复和安装卸载脚本。原生 GNOME / KDE 桌面、Wayland、Tailcat、托盘、ARM64 和 Ubuntu 24.04 的 AppArmor 脚本还没有实测，遇到问题请提 Issue。
 
 ## 维护与测试
 

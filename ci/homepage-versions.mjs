@@ -92,7 +92,7 @@ export function render(text, lang, data) {
     zh ? '| 平台 | 官方最新版 | 本项目需要的版本 |' : '| Platform | Latest official | Version this project needs |',
     '| --- | --- | --- |',
     `| Windows x64 | [${snap.windows.version}](${official.win})${note ? (zh ? `（${note}）` : ` (${note})`) : ''} | ${windowsNeeds} |`,
-    `| Linux x64 / ARM64 | [${snap.linux.version}](${official.linux})${linuxNote ? (zh ? `（${linuxNote}）` : ` (${linuxNote})`) : ''} | ${linux.version}${linuxArm64.version === linux.version ? '' : ` / ${linuxArm64.version}`}${zh ? `（${linuxVersionNote}.deb 原包；已通过构建校验，未在 Linux 桌面真机实测）` : ` (${linuxVersionNote}.deb archive; build-verified, not yet tested on a live Linux desktop)`} |`,
+    `| Linux x64 / ARM64 | [${snap.linux.version}](${official.linux})${linuxNote ? (zh ? `（${linuxNote}）` : ` (${linuxNote})`) : ''} | ${linux.version}${linuxArm64.version === linux.version ? '' : ` / ${linuxArm64.version}`}${zh ? `（${linuxVersionNote}.deb 原包；已在 WSL2 的 Ubuntu 22.04 x64 上实测，原生桌面和 ARM64 未实测）` : ` (${linuxVersionNote}.deb archive; tested on Ubuntu 22.04 x64 under WSL2; native desktops and ARM64 untested)`} |`,
     `| macOS ARM64 | [${snap.mac.version}](${official.mac}) | ${mac.version}${zh ? `（${macNote}未在 Mac 真机上测试）` : ` (${macNote}not tested on a Mac)`} |`,
     `| macOS Intel (x64) | [${snap.mac.version}](${official.macIntel}) | ${macIntel.version}${zh ? `（${macNote}已在 Intel Mac 上实测 1.2.3 可用）` : ` (${macNote}tested working on an Intel Mac with 1.2.3)`} |`,
     `| iOS | [${snap.ios.version}](${official.ios})${iosUnsupported ? (zh ? `（${iosUnsupported}）` : ` (${iosUnsupported})`) : ''} | ${ios.version}${zh ? `（构建 ${ios.build}；已在 iPad 上验证连接、发消息和 App Intent）` : ` (build ${ios.build}; pairing, messaging and App Intents verified on an iPad)`} |`,

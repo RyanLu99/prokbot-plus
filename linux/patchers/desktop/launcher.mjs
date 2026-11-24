@@ -184,6 +184,16 @@ SRC_REAL=$(CDPATH= cd -- "$SOURCE_DIR" && pwd -P)
 DST_PARENT=$(CDPATH= cd -- "$(dirname "$INSTALL_DIR")" && pwd -P)
 DST_REAL="$DST_PARENT/$(basename "$INSTALL_DIR")"
 
+# Replace or remove only an empty directory or an earlier ${APP_NAME} install.
+own_install() {
+  [ -f "$1/resources/grokbot-local.patch.json" ] && [ -f "$1/grok-bot" ]
+}
+
+if [ "$SRC_REAL" != "$DST_REAL" ] && [ -e "$DST_REAL" ] && ! own_install "$DST_REAL" && [ -n "$(ls -A "$DST_REAL" 2>/dev/null)" ]; then
+  echo "Refusing to replace $DST_REAL: it is not a ${APP_NAME} install. Choose an empty or new directory with --dir." >&2
+  exit 1
+fi
+
 if [ "$SRC_REAL" != "$DST_REAL" ]; then
   STAGE="$DST_PARENT/.${APP_ID}-install-$$"
   rm -rf "$STAGE"
@@ -203,7 +213,7 @@ fi
 
 EXEC_LINE="$DST_REAL/${APP_ID}"
 case "$EXEC_LINE" in
-  *" "*|*"	"*) EXEC_LINE="\"$EXEC_LINE\"" ;;
+  *" "*|*"	"*) EXEC_LINE="\\"$EXEC_LINE\\"" ;;
 esac
 
 cat > "$APP_DIR/${APP_ID}.desktop" <<EOF
@@ -234,7 +244,7 @@ if [ -r /proc/sys/kernel/apparmor_restrict_unprivileged_userns ] && \
    [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo 0)" = "1" ]; then
   echo ""
   echo "Ubuntu/AppArmor userns restriction detected. To keep Chromium sandboxing enabled, run once:"
-  echo "  sudo \"$DST_REAL/setup-apparmor.sh\""
+  echo "  sudo \\"$DST_REAL/setup-apparmor.sh\\""
 fi
 `;
 }
@@ -273,7 +283,18 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-rm -f "$BIN_DIR/${APP_ID}" "$APP_DIR/${APP_ID}.desktop" "$ICON_FILE"
+# Replace or remove only an empty directory or an earlier ${APP_NAME} install.
+own_install() {
+  [ -f "$1/resources/grokbot-local.patch.json" ] && [ -f "$1/grok-bot" ]
+}
+
+if [ -e "$INSTALL_DIR" ] && ! own_install "$INSTALL_DIR"; then
+  echo "Refusing to remove $INSTALL_DIR: it is not a ${APP_NAME} install." >&2
+  exit 1
+fi
+
+if [ -L "$BIN_DIR/${APP_ID}" ]; then rm -f "$BIN_DIR/${APP_ID}"; fi
+rm -f "$APP_DIR/${APP_ID}.desktop" "$ICON_FILE"
 rm -rf "$INSTALL_DIR"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
