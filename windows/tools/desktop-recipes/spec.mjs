@@ -1,6 +1,6 @@
-// Changes to the official Grok Bot 1.2.3 app.asar (Windows x64, macOS arm64 and macOS x64),
-// built into recipes by build.mjs. Each anchor must occur exactly once in its source;
-// a different official build is refused instead of being half patched.
+// Changes to the official Grok Bot 1.2.3 app.asar (Windows x64, macOS arm64, macOS x64,
+// Linux x64 and Linux arm64), built into recipes by build.mjs. Each anchor must occur
+// exactly once in its source; a different official build is refused instead of being half patched.
 // Code that the recipes append lives in extensions/ (it is the source, not dead code).
 //
 // Edits: { prepend | append | replaceAll: text }, { insertBefore | insertAfter: anchor, text },
@@ -52,6 +52,32 @@ export const PLATFORM_CHUNKS = {
     updateView: 'chunk-view-BRGRN7FA.js',
     marketplaceBrowse: 'chunk-marketplace-browse-model-BzNg1DeV.js',
     pluginDetail: 'chunk-plugin-detail-view-CRBo_LQw.js',
+  },
+  'linux-x64': {
+    sentry: 'chunk-sentry-sdk-DiwFlyhv.js',
+    eagerCommon: 'index.eager-common-D2eZn7JB.js',
+    eagerApp: 'index.eager-app-B6gpFfGB.js',
+    connectedApps: 'chunk-view-DAeC92nA.js',
+    sharepointWrite: 'chunk-plugin-detail-sharepoint-write-DFY_To7o.js',
+    library: 'chunk-bot-store-files-library-BabNGuF3.js',
+    generalPane: 'chunk-general-pane-DwiXZcuU.js',
+    computerView: 'chunk-view-ipXdZQ2n.js',
+    updateView: 'chunk-view-J3AxaK3E.js',
+    marketplaceBrowse: 'chunk-marketplace-browse-model-BZ0OEIU-.js',
+    pluginDetail: 'chunk-plugin-detail-view-KtsNlj6B.js',
+  },
+  'linux-arm64': {
+    sentry: 'chunk-sentry-sdk-DyX8qAMX.js',
+    eagerCommon: 'index.eager-common-D2eZn7JB.js',
+    eagerApp: 'index.eager-app-BaELD0Hn.js',
+    connectedApps: 'chunk-view-BpGb0Cce.js',
+    sharepointWrite: 'chunk-plugin-detail-sharepoint-write-CBhMdwnE.js',
+    library: 'chunk-bot-store-files-library-DaTQnkTW.js',
+    generalPane: 'chunk-general-pane-RrKGBYtS.js',
+    computerView: 'chunk-view-D4BwHc8w.js',
+    updateView: 'chunk-view-BH345BsV.js',
+    marketplaceBrowse: 'chunk-marketplace-browse-model-CvCP2hBV.js',
+    pluginDetail: 'chunk-plugin-detail-view-DYGvXJQx.js',
   },
 };
 

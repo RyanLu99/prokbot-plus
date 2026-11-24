@@ -4,6 +4,10 @@
 
 Versions start at ProkBot Plus 1.0.0; upstream ProkBot releases are listed at the end. Full notes for each version are in its [release](https://github.com/ferretgeek/prokbot-plus/releases) and the commit history.
 
+## Unreleased
+
+- **Linux 桌面客户端（x64 / ARM64）/ Linux desktop client (x64 / ARM64)**：新增 `linux/` 补丁工具与 1.2.3 双架构（`x64`、`arm64`）recipe，支持从用户下载的官方 `.deb` 原包生成便携目录（`grokbot-local/`）、`.tar.gz` 压缩包和免 root 用户级安装脚本（`install.sh` / `uninstall.sh` / Ubuntu 24.04+ `setup-apparmor.sh`）。共用桌面主进程补齐 Linux 无边框主窗、原生边框配对窗、Wayland 标志、托盘图标、密钥环回退、`pw-play`/`paplay`/`aplay` 提示音、`linux-` 本机标识与 Codex 委派，复用 `host/bin/` 中的 Linux Tailcat；Host 同步识别 `linux` 设备类型与 `linux-` 本机执行端（需要重建 Host 镜像生效）。Release 增加第七个工具包 `prokbot-plus-linux.zip`。Added `linux/` patcher and 1.2.3 recipes for both `x64` and `arm64`, building a portable folder (`grokbot-local/`), `.tar.gz` archive and rootless user-level scripts (`install.sh`, `uninstall.sh` and `setup-apparmor.sh` for Ubuntu 24.04+) from the user's official `.deb` archive. The shared desktop main process now handles Linux frameless workspace chrome, framed pairing dialog, Wayland client flag, PNG tray icon, Linux keyring fallback, `pw-play`/`paplay`/`aplay` notification sounds, `linux-` machine IDs and Codex delegation while reusing the Linux Tailcat binaries in `host/bin/`; the Host recognizes `linux` devices and `linux-` desktop providers (requires rebuilding the Host image). Releases gain a seventh package, `prokbot-plus-linux.zip`.
+
 ## ProkBot Plus 1.9.0 (2026-11-24)
 
 iOS 客户端支持官方 1.27.0（[#14](https://github.com/ferretgeek/prokbot-plus/pull/14)），Host 补上新版客户端会用到的接口，并改善大对话库的打开速度和通知流（[#9](https://github.com/ferretgeek/prokbot-plus/pull/9)），都由 @jun9100 贡献。iOS 用户用新包重新生成，Host 升级即可；Windows、Mac、Android 和网页版与 1.8.0 相同。The iOS client supports the official 1.27.0 (#14), and the Host answers the calls newer clients make, opens large conversation databases faster and keeps the notification stream alive (#9), both contributed by @jun9100. Rebuild iOS with the new package and upgrade the Host; Windows, Mac, Android and the web client are the same as 1.8.0.

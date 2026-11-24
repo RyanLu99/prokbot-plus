@@ -4,7 +4,7 @@
 
 Connect Grok Bot 1.2.3 for macOS to your Host, on both Apple Silicon and Intel Macs. Requires Node.js 22.12+.
 
-The complete deployment steps are in the [deployment guide](../docs/AI-INSTALL.en.md#client-packages), and how it works is in the [technical documentation](../docs/ARCHITECTURE.en.md#mac-client). `clients/desktop/` is the client's main process; the Windows and Android clients use its code too.
+The complete deployment steps are in the [deployment guide](../docs/AI-INSTALL.en.md#client-packages), and how it works is in the [technical documentation](../docs/ARCHITECTURE.en.md#mac-client). `clients/desktop/` is the client's main process; the Windows, Linux and Android clients use its code too.
 
 ## Use
 

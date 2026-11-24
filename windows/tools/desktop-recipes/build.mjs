@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Maintainer tool: regenerate the desktop recipes (Windows x64, macOS arm64, macOS x64)
-// from the official installer and the anchored edits in spec.mjs. Every anchor must occur
-// exactly once in its source; unchanged original bytes become copy ranges, so a recipe adds
-// only this project's code.
+// Maintainer tool: regenerate the desktop recipes (Windows x64, macOS arm64, macOS x64,
+// Linux x64, Linux arm64) from the official installer and the anchored edits in spec.mjs.
+// Every anchor must occur exactly once in its source; unchanged original bytes become copy
+// ranges, so a recipe adds only this project's code.
 //
-//   node windows/tools/desktop-recipes/build.mjs [--target windows|mac-arm64|mac-x64] [--source <installer|app>] [--check]
+//   node windows/tools/desktop-recipes/build.mjs [--target windows|mac-arm64|mac-x64|linux-x64|linux-arm64] [--source <installer|app|deb>] [--check]
 //
 // Without --source the pinned installer is downloaded and verified like patch.mjs does.
 // --check rebuilds in memory and fails unless the committed recipes say the same thing. gzip output
@@ -20,6 +20,7 @@ import path from 'node:path';
 import { acquireDesktopSource } from '../../../mac/patchers/desktop/download-original.mjs';
 import { applyByteRecipe } from '../../../mac/patchers/desktop/release-recipes.mjs';
 import { unpackOriginal } from '../../patchers/desktop/original.mjs';
+import { unpackOriginal as unpackLinuxOriginal } from '../../../linux/patchers/desktop/deb.mjs';
 import { SPEC, buildSpec } from './spec.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +32,8 @@ const TARGET_DIRS = {
   windows: path.join(repo, 'windows/patchers/desktop'),
   'mac-arm64': path.join(repo, 'mac/patchers/desktop'),
   'mac-x64': path.join(repo, 'mac/patchers/desktop/x64'),
+  'linux-x64': path.join(repo, 'linux/patchers/desktop'),
+  'linux-arm64': path.join(repo, 'linux/patchers/desktop/arm64'),
 };
 
 function unique(source, anchor, label) {
@@ -120,8 +123,9 @@ async function main() {
   const temporary = await mkdtemp(path.join(os.tmpdir(), 'grokbot-desktop-recipes-'));
   let mounted = null;
   try {
-    const isMac = target !== 'windows';
-    const cacheRoot = isMac ? path.join(repo, 'mac/.cache') : path.join(windowsRoot, '.cache');
+    const isMac = target.startsWith('mac-');
+    const isLinux = target.startsWith('linux-');
+    const cacheRoot = isMac ? path.join(repo, 'mac/.cache') : isLinux ? path.join(repo, 'linux/.cache') : path.join(windowsRoot, '.cache');
     const source = await acquireDesktopSource({ source: arg('--source'), cacheDirectory: cacheRoot, supported,
       onDownload: ({ version }) => console.error(`正在下载 Grok Bot ${version} (${target})…`) });
     let asarFile;
@@ -137,6 +141,9 @@ async function main() {
         app = path.join(mounted, 'Grok Bot.app');
       }
       asarFile = path.join(app, 'Contents/Resources/app.asar');
+    } else if (isLinux) {
+      const app = await unpackLinuxOriginal(source, temporary, supported);
+      asarFile = path.join(app, 'resources/app.asar');
     } else {
       const app = await unpackOriginal(source, temporary, supported);
       asarFile = path.join(app, 'resources/app.asar');

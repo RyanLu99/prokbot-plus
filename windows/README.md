@@ -67,7 +67,7 @@ $old = Join-Path $env:LOCALAPPDATA 'Programs\Grok Bot Local'
 ## 维护
 
 - `patchers/desktop/original.mjs`：从官方安装包中切出 `app-64.7z` 并解压，Android 补丁也用它。
-- `tools/desktop-recipes/`：`build.mjs` 按 `spec.mjs` 中的锚点修改，从官方 1.2.3 安装包生成 Windows、macOS ARM64 和 macOS Intel（`--target windows|mac-arm64|mac-x64`）三套 recipe；锚点必须在原文件中唯一。`extensions/` 是追加到原版模块里的本项目代码。加 `--check` 时只校验已提交的 recipe 能逐字节重现。
+- `tools/desktop-recipes/`：`build.mjs` 按 `spec.mjs` 中的锚点修改，从官方 1.2.3 原包生成 Windows、macOS ARM64、macOS Intel、Linux x64 和 Linux ARM64（`--target windows|mac-arm64|mac-x64|linux-x64|linux-arm64`）五套 recipe；锚点必须在原文件中唯一。`extensions/` 是追加到原版模块里的本项目代码。加 `--check` 时只校验已提交的 recipe 能逐字节重现。
 - `patchers/desktop/1.1.0/` 与 `patchers/desktop/0.71.2/`：回退版本的固定输入和 recipe，同时供 Android 与网页版使用。补丁按 `supported.json` 中的大小和 SHA-256 识别 `--source` 的版本。
 - `installer/`：安装器源码（仅 Go 标准库），`go build -trimpath -ldflags="-H=windowsgui -s -w" -o ../dist/installer/grokbot-setup-stub.exe .`
 - `dist/network/grokbot-tailcat.exe`：`python host/network/build-tailcat.py --target windows-amd64 --output windows/dist/network`

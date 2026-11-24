@@ -66,10 +66,13 @@ test('without a fallback the patch shows a single accepted Windows release', asy
   }
 });
 
-test('Android names its interface release and fallback; Mac notes a newer official release', async () => {
+test('Android names its interface release and fallback; Mac and Linux note a newer official release', async () => {
   const data = await fixtureData();
   data.android = { ...data.android, desktopVersion: '1.1.0' }; data.androidFallback = ['0.71.2'];
   data.mac = { ...data.mac, version: '0.71.2' }; data.snap.mac = { ...data.snap.mac, version: '1.1.0' };
+  data.linux = { ...data.linux, version: '1.2.3', archive: { ...data.linux.archive, sha256: 'c'.repeat(64) } };
+  data.linuxArm64 = { ...data.linuxArm64, version: '1.2.3' };
+  data.snap.linux = { ...data.snap.linux, version: '1.3.0', observedArchiveSha256: 'd'.repeat(64) };
   const zh = render(fixture,'zh',data), en = render(fixture,'en',data);
   assert.ok(zh.includes('界面取自 Windows **1.1.0** 安装包（推荐；用不了再用 0.71.2）'));
   assert.ok(en.includes('interface taken from the Windows **1.1.0** installer (recommended; 0.71.2 if it does not work)'));
@@ -78,6 +81,8 @@ test('Android names its interface release and fallback; Mac notes a newer offici
     '(recommended; 0.71.2 if it does not work), built once and uploaded to your Host |'));
   assert.ok(zh.includes('| 0.71.2（尚未适配 1.1.0；未在 Mac 真机上测试） |'));
   assert.ok(en.includes('| 0.71.2 (not yet adapted to 1.1.0; not tested on a Mac) |'));
+  assert.ok(zh.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand)（此补丁不支持） | 1.2.3（尚未适配 1.3.0；.deb 原包；已通过构建校验，未在 Linux 桌面真机实测） |'));
+  assert.ok(en.includes('| Linux x64 / ARM64 | [1.3.0](https://api2.cursor.sh/updates/api/download/stable/linux-x64/sand) (not supported by this patch) | 1.2.3 (not yet adapted to 1.3.0; .deb archive; build-verified, not yet tested on a live Linux desktop) |'));
   data.snap.mac.version = '0.71.2';
   assert.ok(render(fixture,'en',data).includes('| 0.71.2 (not tested on a Mac) |'));
 });
