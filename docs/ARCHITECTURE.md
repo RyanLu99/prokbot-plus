@@ -16,6 +16,7 @@ ProkBot Plus 的原理、各部分的实现、目录、测试与维护，以及�
 flowchart LR
   Win[Windows 客户端] --> Admin
   Mac[Mac 客户端] --> Admin
+  Lin[Linux 客户端] --> Admin
   iOS[iOS 客户端] --> Admin
   And[Android 客户端] --> Admin
   Web[网页版<br/>任何浏览器] --> Admin
@@ -25,7 +26,7 @@ flowchart LR
   end
   Adapter --> Model[你的模型接口<br/>Chat / Responses / Anthropic]
   Core --> Box[box 容器<br/>官方 Linux 桌面]
-  Core -.经客户端反向连接.-> PC[你的 Mac / Windows 电脑]
+  Core -.经客户端反向连接.-> PC[你的 Mac / Windows / Linux 电脑]
   Admin --> Push[APNs / Bark]
   Admin <--> Tailcat[Tailcat 内置组网]
 ```
@@ -145,16 +146,18 @@ Bot 做有风险的操作前，原版会问官方分类服务。这里改用你�
 
 直接使用官方 Linux 桌面镜像，Host 通过带认证的连接操作它，可以和 Host 同机，也可以放到另一台。让 Agent 操作你的电脑时，客户端主动连到 Host，你的电脑不需要开放端口。
 
-<a id="mac-client"></a><a id="windows-client"></a><a id="mac-客户端"></a><a id="windows-客户端本版本新增"></a>
-### 桌面客户端（Mac 与 Windows）
+<a id="mac-client"></a><a id="windows-client"></a><a id="linux-client"></a><a id="mac-客户端"></a><a id="windows-客户端本版本新增"></a>
+### 桌面客户端（Mac、Windows 与 Linux）
 
-原版桌面客户端是 Electron 应用。这里保留原版界面，重写负责连接和系统功能的主进程（`mac/clients/desktop/`，Mac 和 Windows 共用），让它只连接你的 Host。平台差异集中在 `platform.mjs`。复杂编程交给本机的 Codex。
+原版桌面客户端是 Electron 应用。这里保留原版界面，重写负责连接和系统功能的主进程（`mac/clients/desktop/`，Mac、Windows 与 Linux 共用），让它只连接你的 Host。平台差异集中在 `platform.mjs`。复杂编程交给本机的 Codex。
 
 - **Mac**：默认 ad-hoc 签名；要让 Agent 控制图形界面，需要用自己的证书签名（`--identity auto`），并授予辅助功能和屏幕录制权限。输出放在 `.noindex` 目录，避免 Spotlight 收录重复的 App。补丁按本机芯片选原版：Apple 芯片的固定输入在 `mac/patchers/desktop/`，Intel 的在 `mac/patchers/desktop/x64/`，`--arch` 可以指定。如需回退 `0.71.2`，请使用 v1.7.0 的 Mac 发布包。重建 Mac Tailcat：`python host/network/build-tailcat.py --target darwin-arm64 --output mac/dist/network`（Apple 芯片）和 `python host/network/build-tailcat.py --target darwin-amd64 --output mac/dist/network/x64`（Intel）。
 - **Windows**：`windows/patchers/desktop/patch.mjs` 默认用 1.2.3 安装包，`--version 1.1.0` 或 `--version 0.71.2` 改用回退版本，`--source` 可指定安装包、`app-64.7z` 或已安装目录（按大小和 SHA-256 识别版本）。从 NSIS 安装包取出 `app-64.7z`，用 Windows 自带的 `tar.exe`（Windows 10 用 7-Zip）解包，核对 `app.asar` 并回放 recipe；`--verify-only` 到此为止。生成时换入共用主进程，重打 ASAR，输出便携目录、便携 ZIP、安装包和 `*.patch.json`。改过的 `Grok Bot.exe` 不再带官方签名。
 - **Windows 运行时**：关窗后留在托盘；通知用带 AppUserModelID 的开始菜单快捷方式；本机命令用 PowerShell 并打开 UTF-8 输出（从 Git Bash 启动会改变 `cmd /c` 参数，请从开始菜单启动）；委派用本机 `codex.exe`，结束时 `taskkill /T`。Windows 没有 Mac 的鼠标键盘组件。
+- **Linux**：`linux/patchers/desktop/patch.mjs` 支持官方 1.2.3 `x64`（`linux/patchers/desktop/`）和 `arm64`（`linux/patchers/desktop/arm64/`）的 `.deb` 原包（`deb.mjs` 用纯 Node 解析 `ar` 归档并校验整包及 `data.tar.xz` 摘要，再调用 `tar` 解包），核对 `grok-bot` 与 `app.asar` 并回放 recipe；Linux Electron 不校验 ELF 内嵌 ASAR 摘要，保持原版 `grok-bot` 二进制不变。复用 `host/bin/` 下对应架构的 Linux Tailcat，输出便携目录（`grokbot-local/`）、`.tar.gz`（`--no-archive` 可跳过）、`*.patch.json` 及免 root 的 `install.sh` / `uninstall.sh` / `setup-apparmor.sh`。
+- **Linux 运行时**：主窗口沿用官方无边框样式（`frame: false, titleBarStyle: 'default'`），由原版界面渲染最小化/最大化/关闭按钮并在 Wayland 下传递 `--sand-wayland-client`；配对窗口使用原生边框；托盘使用 `icon.png`（不可用时关窗直接退出，菜单保留 `Ctrl+Q`）；提示音依次回退 `pw-play` / `paplay` / `aplay`；凭据优先用系统密钥环，无守护进程时沿用官方行为启用 `basic_text`；本机机器 ID 使用 `linux-` 前缀，支持本机命令行与 Codex，不支持鼠标键盘图形控制。
 - **桌面 1.1.0 / 1.2.3 接口**：preload 按 `desktop-mount`、`main`、`spotlight` 三条边声明方法，`local-services.mjs` 按边注册处理器；全局搜索由 `gateway.mjs` 转为 Host 的 `searchAgents` / `searchMedia`；听写把 16 kHz PCM 攒成 WAV 交给 Host 的 `/local/audio/transcriptions`。
-- **recipe**：1.2.3 的三平台 recipe（Windows x64、macOS ARM64、macOS Intel x64）由 `windows/tools/desktop-recipes/build.mjs`（`--target windows|mac-arm64|mac-x64`）统一生成。`spec.mjs` 的每处修改以原文件里只出现一次的文本为锚点，追加的本项目代码在 `extensions/`；`--check` 从官方安装包重新生成，比较解压后的内容（不同 zlib 压缩出的 gzip 字节不同），并核对每个 recipe 文件与清单里的 SHA-256 一致。`1.1.0/`（由提交 `8c1fcd1` 的 `spec.mjs` 生成）和 `0.71.2/` 的 recipe 保留为 Windows 回退版本，并与 Android / 网页版共用；`mac/patchers/desktop/native-helper.mjs` 针对 1.2.3 的 `CUGrokBotService` 通用二进制更新 Team ID。`mac/clients/desktop/*-settings-extension.js` 是 0.71.2 recipe 加进设置页的代码的源码。
+- **recipe**：1.2.3 的五平台 recipe（Windows x64、macOS ARM64、macOS Intel x64、Linux x64、Linux ARM64）由 `windows/tools/desktop-recipes/build.mjs`（`--target windows|mac-arm64|mac-x64|linux-x64|linux-arm64`）统一生成。`spec.mjs` 的每处修改以原文件里只出现一次的文本为锚点，追加的本项目代码在 `extensions/`；`--check` 从官方安装包重新生成，比较解压后的内容（不同 zlib 压缩出的 gzip 字节不同），并核对每个 recipe 文件与清单里的 SHA-256 一致。`1.1.0/`（由提交 `8c1fcd1` 的 `spec.mjs` 生成）和 `0.71.2/` 的 recipe 保留为 Windows 回退版本，并与 Android / 网页版共用；`mac/patchers/desktop/native-helper.mjs` 针对 1.2.3 的 `CUGrokBotService` 通用二进制更新 Team ID。`mac/clients/desktop/*-settings-extension.js` 是 0.71.2 recipe 加进设置页的代码的源码。
 - **安装器**：`windows/installer/` 用 Go 标准库把 `stub.exe`、便携 ZIP 和 32 字节尾部拼成按用户安装包，默认装到 `%LOCALAPPDATA%\Programs\Grok Bot Local`，支持 `/S`、`/D=目录`。重建 stub：在 `windows/installer/` 运行 `go build -trimpath -ldflags="-H=windowsgui -s -w" -o ../dist/installer/grokbot-setup-stub.exe .`；重建 Tailcat：`python host/network/build-tailcat.py --target windows-amd64 --output windows/dist/network`。
 
 <a id="desktop-protocol"></a>
@@ -248,10 +251,11 @@ Bot 和技能发布到自己的 Host，或在管理页「分享」导出、导�
 | `host/tools/host-admin.mjs` | 命令行管理 |
 | `host/network/`、`host/bin/` | Tailcat 源码与构建脚本、预编译的 Linux 版 |
 | `host/bench/` | 整机容量测量工具（见 `host/README.md`） |
-| `mac/clients/desktop/` | 桌面主进程，Mac 与 Windows 共用；Android 也复制其中的 `i18n.mjs`、`external-url.mjs`、`connectors.mjs` |
-| `mac/patchers/desktop/` | Mac 补丁、recipe 应用器、原版下载器（Windows 也用）；`x64/` 是 Intel 版的固定输入和 recipe |
+| `mac/clients/desktop/` | 桌面主进程，Mac、Windows 与 Linux 共用；Android 也复制其中的 `i18n.mjs`、`external-url.mjs`、`connectors.mjs` |
+| `mac/patchers/desktop/` | Mac 补丁、recipe 应用器、原版下载器（Windows、Linux 也用）；`x64/` 是 Intel 版的固定输入和 recipe |
+| `linux/patchers/desktop/` | Linux 补丁：`patch.mjs`、`deb.mjs`（纯 Node 解析与校验 `.deb`）、`launcher.mjs`（便携启动器与用户级安装脚本）、`tar.mjs`、`recipes/`；`arm64/` 是 ARM64 版的固定输入和 recipe |
 | `windows/patchers/desktop/` | Windows 补丁：`patch.mjs`、`original.mjs`（解压官方安装包，Android 和网页版也用）、`inputs.mjs`（各版本输入）、`pe.mjs`、`recipes/`；`1.1.0/` 与 `0.71.2/` 是回退版本 |
-| `windows/tools/` | 1.2.3 桌面 recipe 生成工具 `desktop-recipes/`（支持 Windows / macOS ARM64 / macOS Intel）、preload 检查 |
+| `windows/tools/` | 1.2.3 桌面 recipe 生成工具 `desktop-recipes/`（支持 Windows / macOS ARM64 / macOS Intel / Linux x64 / Linux ARM64）、preload 检查 |
 | `windows/installer/`、`windows/dist/` | 安装器源码，预编译的 Tailcat 和安装器 stub |
 | `android/shell/`、`android/dist/` | Android 外壳源码（`release-shell.mjs` 重建）和预编译外壳 |
 | `android/client/` | WebView 里的桥接、排版和兼容代码，网页版共用 |
@@ -283,6 +287,7 @@ node ci/homepage-versions.mjs            # 首页版本表是否与清单一致
 node --test "host/tests/*.test.mjs"      # 服务端
 node --test "windows/tests/*.test.mjs"   # Windows 客户端
 node --test "mac/tests/*.test.mjs"       # Mac / 共用客户端
+node --test "linux/tests/*.test.mjs"     # Linux 客户端
 node --test "android/tests/*.test.mjs"   # Android 客户端
 node --test "web/tests/*.test.mjs"       # 网页版
 ```
@@ -335,6 +340,7 @@ node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> 
 
 - 只支持清单里的固定版本，官方更新后要重新制作补丁；没有自动更新。
 - Windows：Bot 还不能控制鼠标键盘；没有代码签名；只支持 x64；Tailcat 和实时语音没有和真实 Host 联调过。
+- Linux：不支持本机鼠标键盘图形控制；Ubuntu 24.04+ 启用 AppArmor userns 限制时需运行一次 `sudo …/setup-apparmor.sh` 以保留沙箱；1.2.3 x64 / ARM64 已通过构建与安装脚本校验，尚未在真实 Linux 桌面环境联调。
 - Android：不支持 Tailcat；排版照官方手机版，但页面内容是桌面版的（设置是「通用 / 电脑 / 更新」等标签页，Bot 的电脑从对话详情打开）；后台通知靠前台服务，部分厂商系统需要允许后台运行；语音只验证到请求送达 Host；只在模拟器上测过。
 - 网页版：只能使用 Host 上的 Bot 电脑；不支持 Tailcat；http 地址下麦克风、语音输入和通知不可用，页面关闭后没有通知；没有在真机浏览器上测试。
 - 原版桌面只有 amd64。单台 ARM 机器同时运行 Host 和模拟桌面的完整部署和性能没有验证。

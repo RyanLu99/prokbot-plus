@@ -23,8 +23,9 @@ ProkBot Plus 是 ProkBot（https://gitee.com/ahaduoduoduo/ProkBot ，基于提�
 | 路径 | 内容 |
 | --- | --- |
 | `host/` | 服务端：`release/` 构建与部署，`server/` 管理服务和管理网页，`runtime/` 注入原版 Host 的运行时（模型适配、联网与图片、自动审查、可靠性层），`tools/host-admin.mjs` 命令行管理，`network/` Tailcat 源码，`tests/` |
-| `mac/` | `clients/desktop/` 是桌面客户端主进程，**Mac 和 Windows 共用**，Android 也复制其中三个文件；其中的 `*-settings-extension.js` 没有被代码引用，但它们是 0.71.2 recipe 加进原版设置页的代码的源码，不要当成无用文件删除。`patchers/desktop/` 是 Mac 1.2.3 补丁和原版下载器（含 vendored `node_modules`），`x64/` 是 Intel 版的固定输入和 recipe |
-| `windows/` | Windows 补丁（推荐官方 1.2.3，可回退 1.1.0、0.71.2）、安装器源码（Go）、预编译的 Tailcat 和安装器 stub、`tests/`。`tools/desktop-recipes/` 按 `spec.mjs` 的锚点修改生成 1.2.3 三平台 recipe（`--target windows\|mac-arm64\|mac-x64`），`extensions/` 是 recipe 追加进原版模块的代码的源码；`patchers/desktop/1.1.0/`（由提交 `8c1fcd1` 的 `spec.mjs` 生成）与 `0.71.2/` 是回退版本的输入和 recipe，同时供 Android 和网页版使用 |
+| `mac/` | `clients/desktop/` 是桌面客户端主进程，**Mac、Windows 和 Linux 共用**，Android 也复制其中三个文件；其中的 `*-settings-extension.js` 没有被代码引用，但它们是 0.71.2 recipe 加进原版设置页的代码的源码，不要当成无用文件删除。`patchers/desktop/` 是 Mac 1.2.3 补丁和原版下载器（含 vendored `node_modules`），`x64/` 是 Intel 版的固定输入和 recipe |
+| `windows/` | Windows 补丁（推荐官方 1.2.3，可回退 1.1.0、0.71.2）、安装器源码（Go）、预编译的 Tailcat 和安装器 stub、`tests/`。`tools/desktop-recipes/` 按 `spec.mjs` 的锚点修改生成 1.2.3 五平台 recipe（`--target windows\|mac-arm64\|mac-x64\|linux-x64\|linux-arm64`），`extensions/` 是 recipe 追加进原版模块的代码的源码；`patchers/desktop/1.1.0/`（由提交 `8c1fcd1` 的 `spec.mjs` 生成）与 `0.71.2/` 是回退版本的输入和 recipe，同时供 Android 和网页版使用 |
+| `linux/` | Linux 桌面客户端补丁（官方 1.2.3 `x64` / `arm64` `.deb` 原包）：`patchers/desktop/`（含 `arm64/` 输入和 recipe、`deb.mjs`、`launcher.mjs`、`tar.mjs`、`patch.mjs`）、`tests/`，复用 `host/bin/` 的 Linux Tailcat 和 `mac/clients/desktop/` 共用主进程 |
 | `ios/` | iOS 注入库源码、字节码补丁数据、IPA 补丁工具 |
 | `android/` | `shell/` 是 Android 外壳（Kotlin），`dist/` 是它的预编译 APK；`client/` 是 WebView 里代替 Electron 的桥接；`patchers/` 是生成和签名 APK 的工具；`tests/`。解压官方安装包的代码与 Windows 共用（`windows/patchers/desktop/original.mjs`） |
 | `web/` | 网页版：`client/` 是浏览器层（代替 Android 外壳的原生接口，其余桥接与 `android/client/` 共用），`patchers/` 生成界面包并上传到 Host，`tests/`（含 Playwright 浏览器测试和演示用 Host）。Host 端在 `host/server/web-client.mjs`，登录页在 `host/server/public/web-login.*` |
@@ -39,9 +40,11 @@ python3 host/deploy.py --help              # 对外部署、备份与升级入�
 node --test "host/tests/*.test.mjs"        # 服务端
 node --test "windows/tests/*.test.mjs"     # Windows 客户端
 node --test "mac/tests/*.test.mjs"         # Mac / 共用客户端
+node --test "linux/tests/*.test.mjs"       # Linux 客户端
 node --test "android/tests/*.test.mjs"     # Android 客户端
 node --test "web/tests/*.test.mjs"         # 网页版（Host 的网页版路由测试需要先 npm ci --prefix host/server）
 node windows/patchers/desktop/patch.mjs    # 在 Windows 上生成客户端，输出 windows/output/（已忽略）
+node linux/patchers/desktop/patch.mjs      # 生成 Linux 便携客户端（x64/arm64），输出 linux/output/（已忽略）
 node windows/tools/desktop-recipes/build.mjs --check   # 改了 spec.mjs 或 extensions/ 后去掉 --check 重新生成 recipe
 node android/patchers/patch.mjs            # 生成 Android APK，输出 android/output/（已忽略）
 node web/patchers/patch.mjs                # 生成网页版界面包，输出 web/output/（已忽略）；--upload <Host 地址> 直接装到 Host
@@ -86,10 +89,11 @@ python3 ios/tests/ios-network.test.py && python3 ios/tests/ios-auto-review-prefe
 ## 发布新版本
 
 1. 更新 `CHANGELOG.md`（中英文），必要时更新 `NOTICE`，五套测试全部通过，提交并推送。
-2. 用 `python -B ci/release-packages.py`（内部用 `git archive`）从已推送的提交打 6 个包。每个包都带 `LICENSE NOTICE README.md README.en.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs`：
+2. 用 `python -B ci/release-packages.py`（内部用 `git archive`）从已推送的提交打 7 个包。每个包都带 `LICENSE NOTICE README.md README.en.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs`：
    - `host`；
    - `windows mac`（Windows 补丁依赖 `mac/`）；
    - `mac`；
+   - `linux mac host/bin/grokbot-tailcat host/bin/linux-arm64/grokbot-tailcat`（Linux 补丁依赖 `mac/` 和 Linux Tailcat）；
    - `ios`；
    - `android windows mac`（Android 补丁依赖 `windows/` 和 `mac/`）；
    - `web android windows mac`（网页版生成工具依赖 `android/`、`windows/` 和 `mac/`）。

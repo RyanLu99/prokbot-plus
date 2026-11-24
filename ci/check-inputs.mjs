@@ -61,7 +61,7 @@ async function checkDesktop(dir) {
   return { original, pins };
 }
 const desktopPins = {};
-for (const name of ['mac', 'windows']) {
+for (const name of ['mac', 'windows', 'linux']) {
   const { original, pins } = await checkDesktop(`${name}/patchers/desktop`);
   desktopPins[`${name}/patchers/desktop`] = { original, pins };
   versions[name] = original.version;
@@ -77,6 +77,19 @@ for (const name of ['mac', 'windows']) {
     [...arm.pins.keys()].map(target => target.replace(/-[\w-]{8}\.js$/, '.js')), `${dir}: recipe targets differ from Apple silicon`);
   desktopPins[dir] = { original, pins };
   versions.macIntel = original.version;
+}
+// The ARM64 Linux build of the same version, generated from the same anchored desktop spec.
+{
+  const dir = 'linux/patchers/desktop/arm64';
+  const { original, pins } = await checkDesktop(dir);
+  const x64 = desktopPins['linux/patchers/desktop'];
+  assert.equal(x64.original.architecture, 'x64');
+  assert.equal(original.architecture, 'arm64');
+  for (const key of ['version', 'preloadSha256']) assert.equal(original[key], x64.original[key], `${dir}: ${key} differs from Linux x64`);
+  assert.deepEqual([...pins.keys()].map(target => target.replace(/-[\w-]{8}\.js$/, '.js')).sort(),
+    [...x64.pins.keys()].map(target => target.replace(/-[\w-]{8}\.js$/, '.js')).sort(), `${dir}: recipe targets differ from Linux x64`);
+  desktopPins[dir] = { original, pins };
+  versions.linuxArm64 = original.version;
 }
 // Older Windows releases the patch still builds (the fallback), each in a directory named after its version.
 const windowsFallback = [];

@@ -34,11 +34,18 @@ Modifications made in ProkBot Plus (2026-11-07 to 2026-11-24)
      of legacy installs and preserves occupied Start menu and URL entries.
 
 2. Shared desktop client (mac/clients/desktop/)
-   - Cross-platform changes shared by the macOS and Windows clients:
+   - Cross-platform changes shared by the macOS, Windows and Linux clients:
      platform.mjs, main.mjs, connection.mjs, settings.mjs, sounds.mjs,
      connect.css, native-provider.mjs, codex-bridge.mjs, codex-process.mjs,
-     local-exec.mjs (UTF-8 command output on Windows) and attachments.mjs
-     (POSIX Host image paths).
+     local-exec.mjs (UTF-8 command output on Windows, linux- machine ID on
+     Linux) and attachments.mjs (POSIX Host image paths).
+   - Linux x64 / ARM64 client (new): linux/ patcher, pure-Node .deb (ar)
+     parser and verifier (deb.mjs), recipes for 1.2.3 x64 and ARM64 generated
+     by windows/tools/desktop-recipes/build.mjs, portable launcher and
+     per-user install/uninstall/AppArmor scripts (launcher.mjs), tar.gz
+     builder (tar.mjs) and tests, reusing the Linux Tailcat binaries in
+     host/bin/. Host desktop-capabilities, host-computers, push-service and
+     admin devices view recognize Linux desktop clients.
    - The 1.1.0 interfaces: per-edge RPC registration and window visibility
      events (main.mjs, local-services.mjs), dictation through the Host
      (dictation.mjs), search mapping (gateway.mjs) and startup defaults.
