@@ -67,7 +67,7 @@ The new files go to a sibling named `<old folder> (side-by-side)`. The setup doe
 ## Maintenance
 
 - `patchers/desktop/original.mjs`: carves `app-64.7z` out of the official installer and extracts it; the Android patcher uses it too.
-- `tools/desktop-recipes/`: `build.mjs` regenerates the 1.2.3 recipes for Windows, macOS ARM64 and macOS Intel (`--target windows|mac-arm64|mac-x64`) from the official 1.2.3 installers and the anchored edits in `spec.mjs`. Each anchor must be unique in its original file. `extensions/` holds the project code appended to original modules. With `--check` it only verifies that the committed recipes are reproduced byte for byte.
+- `tools/desktop-recipes/`: `build.mjs` regenerates the 1.2.3 recipes for Windows, macOS ARM64, macOS Intel, Linux x64 and Linux ARM64 (`--target windows|mac-arm64|mac-x64|linux-x64|linux-arm64`) from the official 1.2.3 originals and the anchored edits in `spec.mjs`. Each anchor must be unique in its original file. `extensions/` holds the project code appended to original modules. With `--check` it only verifies that the committed recipes are reproduced byte for byte.
 - `patchers/desktop/1.1.0/` and `patchers/desktop/0.71.2/`: the pinned inputs and recipes of the fallback releases, also shared by the Android and web client interfaces. The patcher recognizes a `--source` by the size and SHA-256 in `supported.json`.
 - `installer/`: installer source (Go standard library only), `go build -trimpath -ldflags="-H=windowsgui -s -w" -o ../dist/installer/grokbot-setup-stub.exe .`
 - `dist/network/grokbot-tailcat.exe`: `python host/network/build-tailcat.py --target windows-amd64 --output windows/dist/network`

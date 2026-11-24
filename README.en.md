@@ -134,7 +134,7 @@ The [latest release](https://github.com/ferretgeek/prokbot-plus/releases/latest)
 - some official features are off (virtual cards, external message drafts, passkey forwarding), and voice, push and image generation need your own providers;
 - Bots shared on the official website ("Add to Grok Bot" on x.ai/bot/… pages) cannot be added, because those templates live in the official cloud; Bots are shared between Hosts as ZIP files;
 - the clients are not code-signed: Windows shows a SmartScreen prompt, you sign the iPhone app yourself, and Android needs installs from unknown sources allowed;
-- on Windows the Bot can run commands but cannot yet control the mouse and keyboard;
+- on Windows and Linux the Bot can run commands but cannot yet control the mouse and keyboard;
 - patching the official clients may break the official terms of use; you do so at your own risk.
 
 ## Documentation
@@ -143,10 +143,11 @@ The [latest release](https://github.com/ferretgeek/prokbot-plus/releases/latest)
 | --- | --- |
 | [Deployment guide](docs/AI-INSTALL.en.md) | Deployment, models, building clients, operations, backup and restore, troubleshooting |
 | [Architecture](docs/ARCHITECTURE.en.md) | How it works, what Plus changes, layout, tests, maintenance and releases, known limits |
+| [Linux client guide](linux/README.en.md) | Building, portable launch, rootless install and AppArmor sandboxing for Linux (x64 / ARM64) |
 | [Web client guide](web/README.en.md) | Building, uploading and signing in to the web client; browser support |
 | [Changelog](CHANGELOG.md) | What changed in each release |
 
-Each platform has its own README under `host/`, `windows/`, `android/`, `web/`, `mac/` and `ios/`, shipped with its tool package.
+Each platform has its own README under `host/`, `windows/`, `mac/`, `linux/`, `android/`, `web/` and `ios/`, shipped with its tool package.
 
 ## Community
 

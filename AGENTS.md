@@ -4,17 +4,17 @@ ProkBot Plus 是 ProkBot（https://gitee.com/ahaduoduoduo/ProkBot ，基于提�
 
 它做的事：
 - 把 Grok Bot 的服务端用 Docker 跑在用户自己的 x86_64 或 ARM64 Linux 上；Host 按架构构建，官方执行桌面固定为 amd64；
-- 给官方 Windows / macOS / iOS 客户端打补丁，让它们连这个服务端；
+- 给官方 Windows / macOS / Linux / iOS 客户端打补丁，让它们连这个服务端；
 - Android 客户端不改官方 Android 版（带防篡改保护），而是把官方桌面版界面（取自用户下载的 Windows 安装包）装进本项目的 Android 外壳；
 - 网页版用同一套界面和桥接：用户生成界面包、上传到自己的 Host，Host 只把它提供给用配对码登录的浏览器。
 
-相对上游新增了 Windows x64 客户端、Android 客户端、网页版、Anthropic Messages 和 OpenAI Responses 两种模型接口，以及一批修复。
+相对上游新增了 Windows x64 客户端、Linux 桌面客户端（x64 / ARM64）、Android 客户端、网页版、Anthropic Messages 和 OpenAI Responses 两种模型接口，以及一批修复。
 
 用户面向的文档：
 - `README.md`；
 - `docs/AI-INSTALL.md`（部署手册）；
 - `docs/ARCHITECTURE.md`（技术文档，含测试、依赖官方原包的测试开关和支持新官方版本的步骤）；
-- `host/`、`mac/`、`windows/`、`ios/`、`android/`、`web/` 各自的 `README.md`，随对应的发布包分发。Host 的离线构建、备份、分开部署和应用开发都写在 `host/README.md`，iOS 签名写在 `ios/README.md`。
+- `host/`、`mac/`、`windows/`、`linux/`、`ios/`、`android/`、`web/` 各自的 `README.md`，随对应的发布包分发。Host 的离线构建、备份、分开部署和应用开发都写在 `host/README.md`，iOS 签名写在 `ios/README.md`。
 
 改代码前先读技术文档。`host/server/application-guide.md` 是运行时文件，Bot 编写应用时会读取它，不要当成普通文档删改。
 
@@ -56,7 +56,7 @@ python3 ios/tests/ios-release.test.py && python3 ios/tests/ios-signing.test.py &
 python3 ios/tests/ios-network.test.py && python3 ios/tests/ios-auto-review-preferences.test.py  # iOS 网络与自动审查原生单测（需装有 Xcode 命令行工具的 Mac）
 ```
 
-**提交前五套测试（host、windows、mac、android、web）必须全部通过。**改了 `android/client/` 或 `web/`，再用 1.1.0 和 0.71.2 两种界面包各跑一次 `web/tests/browser-flows.py`。改了 Host 运行时代码，要重建镜像后才会生效。改了 `android/shell/` 要重建预编译外壳，否则补丁工具会因摘要不符拒绝运行。
+**提交前六套测试（host、windows、mac、linux、android、web）必须全部通过。**改了 `android/client/` 或 `web/`，再用 1.1.0 和 0.71.2 两种界面包各跑一次 `web/tests/browser-flows.py`。改了 Host 运行时代码，要重建镜像后才会生效。改了 `android/shell/` 要重建预编译外壳，否则补丁工具会因摘要不符拒绝运行。
 
 ## 必须遵守
 
@@ -88,7 +88,7 @@ python3 ios/tests/ios-network.test.py && python3 ios/tests/ios-auto-review-prefe
 
 ## 发布新版本
 
-1. 更新 `CHANGELOG.md`（中英文），必要时更新 `NOTICE`，五套测试全部通过，提交并推送。
+1. 更新 `CHANGELOG.md`（中英文），必要时更新 `NOTICE`，六套测试全部通过，提交并推送。
 2. 用 `python -B ci/release-packages.py`（内部用 `git archive`）从已推送的提交打 7 个包。每个包都带 `LICENSE NOTICE README.md README.en.md CHANGELOG.md CONTRIBUTING.md SECURITY.md docs`：
    - `host`；
    - `windows mac`（Windows 补丁依赖 `mac/`）；
@@ -99,7 +99,7 @@ python3 ios/tests/ios-network.test.py && python3 ios/tests/ios-auto-review-prefe
    - `web android windows mac`（网页版生成工具依赖 `android/`、`windows/` 和 `mac/`）。
 
    `git archive` 会保留可执行权限。
-3. 生成 `SHA256SUMS.txt`。把每个包解压到独立目录跑测试；Windows 包分别用官方 1.2.3、1.1.0 和 0.71.2 安装包各执行一次 `patch.mjs --source <安装包> --verify-only`，Android 包和网页版包分别用 1.1.0 和 0.71.2 安装包各执行一次 `--verify-only`。
-4. `gh release create v<版本> --target main --title "ProkBot Plus <版本>" --notes-file <中英双语说明> <6 个 zip> SHA256SUMS.txt`。
+3. 生成 `SHA256SUMS.txt`。把每个包解压到独立目录跑测试；Windows 包分别用官方 1.2.3、1.1.0 和 0.71.2 安装包各执行一次 `patch.mjs --source <安装包> --verify-only`，Linux 包分别用官方 1.2.3 x64 和 arm64 `.deb` 原包各执行一次 `patch.mjs --source <.deb> --verify-only`，Android 包和网页版包分别用 1.1.0 和 0.71.2 安装包各执行一次 `--verify-only`。
+4. `gh release create v<版本> --target main --title "ProkBot Plus <版本>" --notes-file <中英双语说明> <7 个 zip> SHA256SUMS.txt`。
 
    **不要附带打好补丁的客户端或网页版界面包。**

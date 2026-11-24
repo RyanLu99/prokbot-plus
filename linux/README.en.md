@@ -20,7 +20,7 @@ node linux/patchers/desktop/patch.mjs
   - `grokbot-local/`: portable directory (run `./grokbot-local` directly);
   - `GrokBotLocal-1.2.3-<arch>-linux.tar.gz`: portable archive for copying to a Linux desktop (skip with `--no-archive`);
   - `GrokBotLocal-1.2.3-<arch>.patch.json`: build verification manifest.
-- `--verify-only` verifies the pinned original and replays the recipes in a temporary directory without writing output.
+- `--verify-only` verifies the pinned original and replays the recipes in a temporary directory without writing output. See the [version table](../README.en.md#client-versions) for accepted inputs and the latest official releases.
 
 ## Install and run
 
@@ -44,6 +44,11 @@ On first launch, enter your Host address and a 6-character pairing code. Turn on
   As a temporary fallback without sandboxing, launch with `GROKBOT_NO_SANDBOX=1 grokbot-local`.
 - **Credential storage**: uses the desktop keyring (GNOME Keyring / KWallet) when running; on minimal window managers without a Secret Service daemon, matches the official Linux client by opting into Electron's `basic_text` backend (still stored `0600` inside a `0700` directory).
 - **Capabilities and limits**: supports built-in Tailcat networking, local command and file execution (with approvals), local Codex CLI delegation and desktop notifications; like Windows, local mouse/keyboard GUI control is unavailable. Uses its own profile directory and `grokbot-local://` scheme so it can coexist with the official client.
+
+## Maintenance and tests
+
+- `patchers/desktop/recipes/` and `patchers/desktop/arm64/recipes/` are generated from the same anchored rules via `windows/tools/desktop-recipes/build.mjs` (`--target linux-x64` / `--target linux-arm64`); run `node --test "linux/tests/*.test.mjs"` to verify.
+- Linux Tailcat binaries are shared with the server at `host/bin/grokbot-tailcat` (x64) and `host/bin/linux-arm64/grokbot-tailcat` (ARM64).
 
 ## License and support
 

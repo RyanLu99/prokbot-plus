@@ -134,7 +134,7 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 - 虚拟卡、外部消息草稿、通行密钥转发等官方功能已关闭，语音、推送、生图要自己准备服务商；
 - 官方网站上别人分享的 Bot（x.ai/bot/… 页面的「Add to Grok Bot」）不能添加，这些模板存在官方云端；Bot 只能在 Host 之间用 ZIP 分享；
 - 客户端没有代码签名：Windows 会有 SmartScreen 提示，iPhone 要自己签名，Android 要允许安装未知来源应用；
-- Windows 版的 Bot 能执行命令，但还不能操作鼠标键盘；
+- Windows 和 Linux 版的 Bot 能执行命令，但还不能操作鼠标键盘；
 - 修改官方客户端可能违反官方用户条款，风险自负。
 
 ## 文档
@@ -143,10 +143,11 @@ ProkBot Plus 自己的版本号见[最新发布](https://github.com/ferretgeek/p
 | --- | --- |
 | [部署手册](docs/AI-INSTALL.md) | 部署、配置模型、生成客户端、日常运维、备份恢复、故障排查 |
 | [技术文档](docs/ARCHITECTURE.md) | 原理、Plus 的改动、目录结构、测试、维护与发布、已知限制 |
+| [Linux 客户端说明](linux/README.md) | Linux（x64 / ARM64）客户端的生成、便携运行、免 root 安装与 AppArmor 沙箱说明 |
 | [网页版说明](web/README.md) | 网页版的生成、上传、登录和浏览器支持 |
 | [更新记录](CHANGELOG.md) | 每个版本改了什么 |
 
-各平台的详细说明在 `host/`、`windows/`、`android/`、`web/`、`mac/`、`ios/` 目录的 README 里，也随对应的工具包分发。
+各平台的详细说明在 `host/`、`windows/`、`mac/`、`linux/`、`android/`、`web/`、`ios/` 目录的 README 里，也随对应的工具包分发。
 
 ## 交流
 

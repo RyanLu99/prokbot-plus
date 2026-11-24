@@ -20,7 +20,7 @@ node linux/patchers/desktop/patch.mjs
   - `grokbot-local/`：便携目录，直接运行 `./grokbot-local` 启动；
   - `GrokBotLocal-1.2.3-<arch>-linux.tar.gz`：便于拷到目标 Linux 电脑的便携压缩包（不需要时加 `--no-archive`）；
   - `GrokBotLocal-1.2.3-<arch>.patch.json`：构建校验清单。
-- `--verify-only` 只在临时目录校验原包并回放补丁，不写出客户端。
+- `--verify-only` 只在临时目录校验原包并回放补丁，不写出客户端。可接受的原包和官方最新版本见[首页版本表](../README.md#client-versions)。
 
 ## 安装与运行
 
@@ -44,6 +44,11 @@ sh grokbot-local/install.sh
   如需临时跳过沙箱启动，可运行 `GROKBOT_NO_SANDBOX=1 grokbot-local`。
 - **凭据存储**：优先使用系统密钥环（GNOME Keyring / KWallet）；无密钥环守护进程时沿用官方 Linux 客户端行为回退到 Electron `basic_text`（凭据文件仍以 `0600` 权限保存在 `0700` 目录）。
 - **本机能力与限制**：支持 Tailcat 内置组网、Bot 在本机执行命令与文件操作（需审批）、委派本机 Codex CLI 与桌面通知；和 Windows 一样不支持本机鼠标键盘图形界面控制。与官方客户端配置目录和协议完全隔离，可共存。
+
+## 维护与测试
+
+- `patchers/desktop/recipes/` 与 `patchers/desktop/arm64/recipes/` 由 `windows/tools/desktop-recipes/build.mjs`（`--target linux-x64` / `--target linux-arm64`）按同一套锚点规则生成，测试命令为 `node --test "linux/tests/*.test.mjs"`。
+- Linux Tailcat 二进制与服务端共用 `host/bin/grokbot-tailcat`（x64）和 `host/bin/linux-arm64/grokbot-tailcat`（ARM64）。
 
 ## 许可与支持
 

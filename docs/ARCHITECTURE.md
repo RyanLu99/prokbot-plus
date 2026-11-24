@@ -45,10 +45,10 @@ flowchart LR
 | 🟢 电脑和浏览器操作、记忆、上下文压缩、定时任务、操作审批、人工接管 | 保留原版，改用你的模型和本地计时 | 操作电脑需要能看图的模型 |
 | 🔁 自动审查 | 用你的模型判断操作能不能执行，规则可以自己写 | — |
 | 🔁 演示任务（Teach a task） | 录制保留原版，整理成技能用你的模型 | 能看图的模型 |
-| 🔁 操作你的电脑 | 经你的 Host，电脑不需要开放端口。Mac 支持命令与图形控制；Windows 支持本机命令 | Mac 或 Windows 客户端 |
+| 🔁 操作你的电脑 | 经你的 Host，电脑不需要开放端口。Mac 支持命令与图形控制；Windows 和 Linux 支持本机命令 | Mac、Windows 或 Linux 客户端 |
 | 🔁 Bot 资料库、用户资料、技能 | 保存在 Host 上；技能可以查看版本、对比和恢复 | — |
 | 🔁 连接应用 | Host 自己的应用目录：代码应用、远程 MCP 或纯技能，支持 OAuth、API Key；Bot 也能自己写应用 | 应用自己的凭据 |
-| 🔁 复杂编程 | 交给已连接的 Mac 或 Windows 上的 Codex，用这台电脑的 Codex 登录和模型 | 装好并登录 Codex CLI |
+| 🔁 复杂编程 | 交给已连接的 Mac、Windows 或 Linux 上的 Codex，用这台电脑的 Codex 登录和模型 | 装好并登录 Codex CLI |
 | 🔁 Bot 和技能分享、多 Bot 协作 | 发布到自己的 Host、导出 ZIP；把任务交给其他 Host 上的 Bot | 另一个 Host |
 | 🔁 语音输入、实时通话 | Fish Audio、OpenAI 兼容的转写，或 Mac 本地模型；通话的识别和合成分别接你的服务（实验） | 语音服务 |
 | 🔁 图片和视频生成 | OpenAI 兼容图片接口（按比例出图、参考图修图）、WaveSpeed 等 | 供应商的 Key |
@@ -279,7 +279,7 @@ Bot 和技能发布到自己的 Host，或在管理页「分享」导出、导�
 <a id="testing"></a>
 ## 测试与维护
 
-需要 Node.js 22.12+、Python 3.10+。提交前五套测试必须全部通过，每条单独运行：
+需要 Node.js 22.12+、Python 3.10+。提交前六套测试必须全部通过，每条单独运行：
 
 ```sh
 node ci/check-inputs.mjs                 # 固定版本、补丁清单和预编译外壳摘要
@@ -311,12 +311,12 @@ node --test "web/tests/*.test.mjs"       # 网页版
 
 ```sh
 node ci/official-channels.mjs --online --phase planning     # 查询官方通道的当前版本
-node ci/desktop-source-audit.mjs <windows|mac> <app.asar> <版本> <asar-sha256>
-node windows/tools/desktop-recipes/build.mjs --target <windows|mac-arm64|mac-x64> --source <安装包或.app> --check
+node ci/desktop-source-audit.mjs <windows|mac|linux> <app.asar> <版本> <asar-sha256>
+node windows/tools/desktop-recipes/build.mjs --target <windows|mac-arm64|mac-x64|linux-x64|linux-arm64> --source <安装包、.app 或 .deb> --check
 node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> <preload-sha256>
 ```
 
-1. 桌面（Windows 与 Mac）：Windows 先把当前版本的输入和 recipe 移到 `windows/patchers/desktop/<版本>/` 作为回退；更新各平台 `supported.json`，按新原文件调整 `spec.mjs` 的锚点后分别运行 `build.mjs --target windows`、`--target mac-arm64`、`--target mac-x64`（并在 Mac 上核对 `native-helper.mjs` 偏移）。Android 和网页版另外验证 WebView 桥接和 `renderer-patches.mjs`，再更新 `android/patchers/supported.json`（旧版本移进 `fallback`）。
+1. 桌面（Windows、Mac 与 Linux）：Windows 先把当前版本的输入和 recipe 移到 `windows/patchers/desktop/<版本>/` 作为回退；更新各平台 `supported.json`，按新原文件调整 `spec.mjs` 的锚点后分别运行 `build.mjs --target windows`、`--target mac-arm64`、`--target mac-x64`、`--target linux-x64`、`--target linux-arm64`（并在 Mac 上核对 `native-helper.mjs` 偏移）。Android 和网页版另外验证 WebView 桥接和 `renderer-patches.mjs`，再更新 `android/patchers/supported.json`（旧版本移进 `fallback`）。
 2. 检查 preload 的接口变化、Bot 目录和资料库、表格、弹窗与输入法，并确认错版输入会被拒绝。
 3. 在真实客户端上验证配对、吊销、Bot 列表与历史、两轮对话、取消、附件上传并读回、重连不重复、重启后历史仍在。
 4. 官方通道的观测记录在 `ci/official-snapshot.json`。更新它之后运行 `node ci/homepage-versions.mjs --write` 刷新双语首页的版本表；这不改变补丁接受的版本。
@@ -331,7 +331,7 @@ node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> 
 | 新增模型接口格式 | 在 `host/runtime/` 新建适配文件，照 `openai-chat.mjs` 的形态实现，再在 `model-session.mjs`、`host-auto-review.mjs` 的 `CLASSIFIERS`、`host/server/models.mjs`、管理页 `public/model.js` 注册 |
 | 调整思考档位 | `host/runtime/model-policy.mjs`；Claude 型号特性在 `anthropic-messages.mjs` |
 | 修改管理页 | `host/server/public/`，英文文案在 `locales-en.js` |
-| 修改桌面客户端 | `mac/clients/desktop/`，Mac 与 Windows 共用；Android 也复制其中几个模块 |
+| 修改桌面客户端 | `mac/clients/desktop/`，Mac、Windows 与 Linux 共用；Android 也复制其中几个模块 |
 | 修改 Android 客户端 | 桥接在 `android/client/`；外壳在 `android/shell/`，改完运行 `node android/shell/release-shell.mjs` 更新预编译外壳和摘要（需要 JDK 17+ 和 Android SDK） |
 | 修改网页版 | 浏览器层在 `web/client/`，Host 端在 `host/server/web-client.mjs`；桥接与 Android 共用 |
 | 应用（插件） | 先看能否做成应用或技能：[应用开发](#app-development) |

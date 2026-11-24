@@ -45,10 +45,10 @@ The patch tools copy bytes from the official files you provide (or that they dow
 | 🟢 Computer and browser use, memory, context compaction, scheduled tasks, approvals, human takeover | Official behavior, using your model and local timers | A model with image input to operate computers |
 | 🔁 Automatic review | Your model decides whether an action may run; you can write the rules | — |
 | 🔁 Teach a task | Official recording; your model turns it into a skill | A model with image input |
-| 🔁 Operate your computer | Through your Host; your computer opens no ports. Mac: commands and GUI control; Windows: local commands | Mac or Windows client |
+| 🔁 Operate your computer | Through your Host; your computer opens no ports. Mac: commands and GUI control; Windows and Linux: local commands | Mac, Windows or Linux client |
 | 🔁 Bot library, user profile, skills | Stored on the Host; skills have versions, diffs and restore | — |
 | 🔁 Connected apps | The Host's own app catalog: code apps, remote MCP or skills only, with OAuth or API keys; Bots can write apps too | The app's own credentials |
-| 🔁 Complex coding | Handed to Codex on a connected Mac or Windows PC, using that computer's Codex login and model | Codex CLI installed and signed in |
+| 🔁 Complex coding | Handed to Codex on a connected Mac, Windows or Linux computer, using that computer's Codex login and model | Codex CLI installed and signed in |
 | 🔁 Sharing Bots and skills, multi-Bot collaboration | Publish to your own Host or export a ZIP; hand tasks to Bots on other Hosts | Another Host |
 | 🔁 Voice input, live calls | Fish Audio, OpenAI-compatible transcription or a local model on Mac; calls use your recognition and speech services (experimental) | Voice services |
 | 🔁 Image and video generation | OpenAI-compatible image APIs (aspect ratios, edits with reference images), WaveSpeed and more | Provider key |
@@ -279,7 +279,7 @@ An app is one `grokbot-app` JSON file that declares code, a remote MCP server or
 <a id="testing"></a>
 ## Tests and maintenance
 
-You need Node.js 22.12+ and Python 3.10+. All five suites must pass before a commit; run each command separately:
+You need Node.js 22.12+ and Python 3.10+. All six suites must pass before a commit; run each command separately:
 
 ```sh
 node ci/check-inputs.mjs                 # pinned versions, patch manifests and prebuilt shell digests
@@ -311,12 +311,12 @@ Versions are set by the manifests the build tools read: desktop `*/patchers/desk
 
 ```sh
 node ci/official-channels.mjs --online --phase planning     # current versions on the official channels
-node ci/desktop-source-audit.mjs <windows|mac> <app.asar> <version> <asar-sha256>
-node windows/tools/desktop-recipes/build.mjs --target <windows|mac-arm64|mac-x64> --source <installer-or-app> --check
+node ci/desktop-source-audit.mjs <windows|mac|linux> <app.asar> <version> <asar-sha256>
+node windows/tools/desktop-recipes/build.mjs --target <windows|mac-arm64|mac-x64|linux-x64|linux-arm64> --source <installer-app-or-deb> --check
 node --expose-internals windows/tools/inspect-desktop-preload.mjs <preload.cjs> <preload-sha256>
 ```
 
-1. Desktop (Windows and Mac): move the current Windows version's inputs and recipe to `windows/patchers/desktop/<version>/` as a fallback; update each platform's `supported.json`, adjust the anchors in `spec.mjs` for the new originals, and run `build.mjs --target windows`, `--target mac-arm64` and `--target mac-x64` (also checking `native-helper.mjs` offsets on Mac). For Android and the web client, verify the WebView bridge and `renderer-patches.mjs`, then update `android/patchers/supported.json` (moving the old version into `fallback`).
+1. Desktop (Windows, Mac and Linux): move the current Windows version's inputs and recipe to `windows/patchers/desktop/<version>/` as a fallback; update each platform's `supported.json`, adjust the anchors in `spec.mjs` for the new originals, and run `build.mjs --target windows`, `--target mac-arm64`, `--target mac-x64`, `--target linux-x64` and `--target linux-arm64` (also checking `native-helper.mjs` offsets on Mac). For Android and the web client, verify the WebView bridge and `renderer-patches.mjs`, then update `android/patchers/supported.json` (moving the old version into `fallback`).
 2. Check preload interface changes, the Bot catalog and library, tables, dialogs and input methods, and confirm that wrong inputs are rejected.
 3. On a real client, verify pairing, revocation, the Bot list and history, a two-turn chat, cancellation, uploading and reading back an attachment, reconnecting without duplicates, and history after a restart.
 4. Official channel observations are kept in `ci/official-snapshot.json`. After updating it, run `node ci/homepage-versions.mjs --write` to refresh the version table on both homepages; this does not change the versions the patches accept.
@@ -331,7 +331,7 @@ The release process (packaging, checksums, `--verify-only` for each package, cre
 | A new model API format | Add an adapter in `host/runtime/` shaped like `openai-chat.mjs`, then register it in `model-session.mjs`, `CLASSIFIERS` in `host-auto-review.mjs`, `host/server/models.mjs` and the admin page's `public/model.js` |
 | Reasoning effort levels | `host/runtime/model-policy.mjs`; Claude model traits in `anthropic-messages.mjs` |
 | The admin page | `host/server/public/`; English strings in `locales-en.js` |
-| Desktop clients | `mac/clients/desktop/`, shared by Mac and Windows; Android copies a few modules too |
+| Desktop clients | `mac/clients/desktop/`, shared by Mac, Windows and Linux; Android copies a few modules too |
 | The Android client | Bridge in `android/client/`; shell in `android/shell/`. After changing the shell, run `node android/shell/release-shell.mjs` to update the prebuilt shell and its digest (needs JDK 17+ and the Android SDK) |
 | The web client | Browser layer in `web/client/`, Host side in `host/server/web-client.mjs`; the bridge is shared with Android |
 | Apps (plugins) | See first whether it can be an app or a skill: [app development](#app-development) |
